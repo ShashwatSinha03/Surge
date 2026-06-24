@@ -81,3 +81,19 @@ export function isValidRoleTransition(
   if (currentRole === 'owner' || targetRole === 'owner') return false;
   return true;
 }
+
+export function canManageMilestones(role: MemberRole): boolean {
+  return role === 'owner' || role === 'admin';
+}
+
+export function canDeleteMilestones(role: MemberRole): boolean {
+  return role === 'owner' || role === 'admin';
+}
+
+export function canDeleteAction(role: MemberRole): boolean {
+  return role === 'owner' || role === 'admin';
+}
+
+export function canUnclaimAnyAction(role: MemberRole): boolean {
+  return role === 'owner' || role === 'admin';
+}

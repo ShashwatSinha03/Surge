@@ -16,6 +16,10 @@ export type QuestState =
 
 export type MemberRole = 'owner' | 'admin' | 'member';
 
+export type MilestoneStatus = 'open' | 'completed';
+
+export type ActionStatus = 'open' | 'claimed' | 'blocked' | 'completed';
+
 export type User = {
   id: string;
   clerk_user_id: string;
@@ -73,4 +77,36 @@ export type MemberWithUser = {
   name: string;
   email: string;
   avatar_url: string | null;
+};
+
+export type Milestone = {
+  id: string;
+  quest_id: string;
+  title: string;
+  status: MilestoneStatus;
+  position: number;
+  created_by: string;
+  created_at: string;
+};
+
+export type Action = {
+  id: string;
+  quest_id: string;
+  milestone_id: string;
+  title: string;
+  description: string | null;
+  status: ActionStatus;
+  owner_id: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ActionWithOwner = Action & {
+  owner_name: string | null;
+  owner_avatar: string | null;
+};
+
+export type MilestoneWithActions = Milestone & {
+  actions: ActionWithOwner[];
 };
