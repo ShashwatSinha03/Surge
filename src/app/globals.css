@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@theme inline {
+  --font-sans: var(--font-ranade), system-ui, sans-serif;
+  --font-secondary: var(--font-chillax), system-ui, sans-serif;
+
+  --color-bg: var(--bg);
+  --color-fg: var(--fg);
+  --color-surface: var(--surface);
+  --color-surface-alt: var(--surface-alt);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+}
+
+:root {
+  --bg: #1C0D11;
+  --fg: #EFD5BD;
+  --surface: #2A1520;
+  --surface-alt: #361E2A;
+  --border: #3D2030;
+  --muted: #8A6A7A;
+  --accent: #EFD5BD;
+  --accent-fg: #1C0D11;
+}
+
+[data-theme="light"] {
+  --bg: #EFD5BD;
+  --fg: #1C0D11;
+  --surface: #E0C5AA;
+  --surface-alt: #D4B89C;
+  --border: #C8A88E;
+  --muted: #6A4A5A;
+  --accent: #1C0D11;
+  --accent-fg: #EFD5BD;
+}
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-ranade), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.font-secondary {
+  font-family: var(--font-chillax), system-ui, sans-serif;
+}
+
+::selection {
+  background: var(--fg);
+  color: var(--bg);
+}
