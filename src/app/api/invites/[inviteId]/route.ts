@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createServerClient } from '@/lib/supabase/server';
 import { getCallerMembership, canManageInvites } from '@/lib/permissions/quest';
+import { revokeInviteService } from '@/features/invites/services/revokeInvite';
 
 export async function DELETE(
   req: NextRequest,
@@ -15,32 +16,32 @@ export async function DELETE(
   const { inviteId } = await params;
 
   const supabase = createServerClient();
-
   const { data: invite } = await supabase
     .from('invites')
     .select('quest_id')
     .eq('id', inviteId)
     .single();
-
-  if (!invite) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  }
+  if (!invite) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   const membership = await getCallerMembership(invite.quest_id, clerkUserId);
   if (!membership || !canManageInvites(membership.role)) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
-  const { error } = await supabase
-    .from('invites')
-    .update({ revoked_at: new Date().toISOString() })
-    .eq('id', inviteId);
+  const { data: user } = await supabase
+    .from('users')
+    .select('id')
+    .eq('clerk_user_id', clerkUserId)
+    .single<{ id: string }>();
 
-  if (error) {
-    return NextResponse.json(
-      { error: 'Failed to revoke invite.' },
-      { status: 500 }
-    );
+  const result = await revokeInviteService({
+    inviteId,
+    actorId: user!.id,
+    questId: invite.quest_id,
+  });
+
+  if (!result.success) {
+    return NextResponse.json({ error: result.error }, { status: 500 });
   }
 
   return NextResponse.json({ message: 'Invite revoked.' });

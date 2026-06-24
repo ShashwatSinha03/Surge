@@ -1,0 +1,26 @@
+export const EVENT_TYPES = [
+  'QUEST_CREATED',
+  'QUEST_UPDATED',
+  'QUEST_ARCHIVED',
+  'MEMBER_INVITED',
+  'MEMBER_JOINED',
+  'MEMBER_REMOVED',
+  'ROLE_CHANGED',
+  'MILESTONE_CREATED',
+  'MILESTONE_UPDATED',
+  'MILESTONE_COMPLETED',
+  'MILESTONE_DELETED',
+  'ACTION_CREATED',
+  'ACTION_UPDATED',
+  'ACTION_CLAIMED',
+  'ACTION_UNCLAIMED',
+  'ACTION_BLOCKED',
+  'ACTION_COMPLETED',
+  'ACTION_DELETED',
+] as const;
+
+export type EventType = (typeof EVENT_TYPES)[number];
+
+export const ENTITY_TYPES = ['QUEST', 'MILESTONE', 'ACTION', 'MEMBER', 'INVITE'] as const;
+
+export type EntityType = (typeof ENTITY_TYPES)[number];

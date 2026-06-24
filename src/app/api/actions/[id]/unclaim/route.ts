@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createServerClient } from '@/lib/supabase/server';
 import { getCallerMembership, canUnclaimAnyAction } from '@/lib/permissions/quest';
-import { canTransition, calculateMilestoneStatus } from '@/lib/execution/state-machine';
+import { canTransition } from '@/lib/execution/state-machine';
+import { unclaimActionService } from '@/features/actions/services/unclaimAction';
 
 export async function POST(
   req: NextRequest,
@@ -22,15 +23,10 @@ export async function POST(
     .select('*')
     .eq('id', id)
     .single();
-
-  if (!action) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  }
+  if (!action) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   const membership = await getCallerMembership(action.quest_id, clerkUserId);
-  if (!membership) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  }
+  if (!membership) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   if (!canTransition(action.status, 'open')) {
     return NextResponse.json(
@@ -39,38 +35,21 @@ export async function POST(
     );
   }
 
-  const isOwner = action.owner_id === membership.userId;
-  const isAuthorized = canUnclaimAnyAction(membership.role);
+  const { data: user } = await supabase
+    .from('users')
+    .select('id')
+    .eq('clerk_user_id', clerkUserId)
+    .single<{ id: string }>();
 
-  if (!isOwner && !isAuthorized) {
-    return NextResponse.json(
-      { error: 'Only the action owner or an admin can unclaim.' },
-      { status: 403 }
-    );
-  }
+  const result = await unclaimActionService({
+    actionId: id,
+    actorId: user!.id,
+    questId: action.quest_id,
+    milestoneId: action.milestone_id,
+    isAuthorized: canUnclaimAnyAction(membership.role),
+  });
 
-  const { error } = await supabase
-    .from('actions')
-    .update({ status: 'open', owner_id: null })
-    .eq('id', id);
-
-  if (error) {
-    return NextResponse.json({ error: 'Failed to unclaim action.' }, { status: 500 });
-  }
-
-  const { data: milestoneActions } = await supabase
-    .from('actions')
-    .select('status')
-    .eq('milestone_id', action.milestone_id);
-
-  const totalActions = milestoneActions?.length ?? 0;
-  const completedCount = milestoneActions?.filter((a) => a.status === 'completed').length ?? 0;
-  const newStatus = (totalActions > 0 && totalActions === completedCount) ? 'completed' as const : 'open' as const;
-
-  await supabase
-    .from('milestones')
-    .update({ status: newStatus })
-    .eq('id', action.milestone_id);
+  if (!result.success) return NextResponse.json({ error: result.error }, { status: 403 });
 
   return NextResponse.json({ message: 'Action unclaimed.' });
 }

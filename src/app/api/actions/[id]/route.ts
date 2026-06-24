@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { createServerClient } from '@/lib/supabase/server';
 import { updateActionSchema } from '@/features/actions/schemas';
 import { getCallerMembership, canDeleteAction } from '@/lib/permissions/quest';
+import { deleteActionService } from '@/features/actions/services/deleteAction';
 
 export async function PATCH(
   req: NextRequest,
@@ -14,7 +15,6 @@ export async function PATCH(
   }
 
   const { id } = await params;
-
   const body = await req.json();
   const parsed = updateActionSchema.safeParse(body);
   if (!parsed.success) {
@@ -28,29 +28,21 @@ export async function PATCH(
     .select('*')
     .eq('id', id)
     .single();
-
-  if (!action) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  }
+  if (!action) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   const membership = await getCallerMembership(action.quest_id, clerkUserId);
-  if (!membership) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  }
+  if (!membership) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const { data: updated, error } = await supabase
+  const updates: Record<string, unknown> = {};
+  if (parsed.data.title) updates.title = parsed.data.title;
+  if (parsed.data.description !== undefined) updates.description = parsed.data.description;
+
+  const { data: updated } = await supabase
     .from('actions')
-    .update({
-      ...(parsed.data.title ? { title: parsed.data.title } : {}),
-      ...(parsed.data.description !== undefined ? { description: parsed.data.description } : {}),
-    })
+    .update(updates)
     .eq('id', id)
     .select()
     .single();
-
-  if (error) {
-    return NextResponse.json({ error: 'Failed to update action.' }, { status: 500 });
-  }
 
   return NextResponse.json(updated);
 }
@@ -73,21 +65,28 @@ export async function DELETE(
     .select('*')
     .eq('id', id)
     .single();
-
-  if (!action) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  }
+  if (!action) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   const membership = await getCallerMembership(action.quest_id, clerkUserId);
   if (!membership || !canDeleteAction(membership.role)) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
-  const { error } = await supabase.from('actions').delete().eq('id', id);
+  const { data: user } = await supabase
+    .from('users')
+    .select('id')
+    .eq('clerk_user_id', clerkUserId)
+    .single<{ id: string }>();
 
-  if (error) {
-    return NextResponse.json({ error: 'Failed to delete action.' }, { status: 500 });
+  const result = await deleteActionService({
+    actionId: id,
+    actorId: user!.id,
+    questId: action.quest_id,
+  });
+
+  if (!result.success) {
+    return NextResponse.json({ error: result.error }, { status: 500 });
   }
 
-  return NextResponse.json({ message: 'Action deleted.' });
+  return NextResponse.json({ message: 'Action deleted.' }, { status: 200 });
 }

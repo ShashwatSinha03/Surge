@@ -3,7 +3,8 @@ import { auth } from '@clerk/nextjs/server';
 import { createServerClient } from '@/lib/supabase/server';
 import { updateMilestoneSchema, deleteMilestoneSchema } from '@/features/milestones/schemas';
 import { getCallerMembership, canManageMilestones, canDeleteMilestones } from '@/lib/permissions/quest';
-import { normalizePositions } from '@/lib/execution/state-machine';
+import { updateMilestoneService } from '@/features/milestones/services/updateMilestone';
+import { deleteMilestoneService } from '@/features/milestones/services/deleteMilestone';
 
 export async function GET(
   req: NextRequest,
@@ -15,7 +16,6 @@ export async function GET(
   }
 
   const { id } = await params;
-
   const supabase = createServerClient();
 
   const { data: milestone } = await supabase
@@ -23,15 +23,10 @@ export async function GET(
     .select('*')
     .eq('id', id)
     .single();
-
-  if (!milestone) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  }
+  if (!milestone) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   const membership = await getCallerMembership(milestone.quest_id, clerkUserId);
-  if (!membership) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  }
+  if (!membership) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   return NextResponse.json(milestone);
 }
@@ -46,7 +41,6 @@ export async function PATCH(
   }
 
   const { id } = await params;
-
   const body = await req.json();
   const parsed = updateMilestoneSchema.safeParse(body);
   if (!parsed.success) {
@@ -54,59 +48,37 @@ export async function PATCH(
   }
 
   const supabase = createServerClient();
-
   const { data: milestone } = await supabase
     .from('milestones')
     .select('*')
     .eq('id', id)
     .single();
-
-  if (!milestone) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  }
+  if (!milestone) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   const membership = await getCallerMembership(milestone.quest_id, clerkUserId);
   if (!membership || !canManageMilestones(membership.role)) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
-  const updates: Record<string, unknown> = {};
-  if (parsed.data.title) updates.title = parsed.data.title;
+  const { data: user } = await supabase
+    .from('users')
+    .select('id')
+    .eq('clerk_user_id', clerkUserId)
+    .single<{ id: string }>();
 
-  if (parsed.data.position !== undefined) {
-    updates.position = parsed.data.position;
+  const result = await updateMilestoneService({
+    milestoneId: id,
+    actorId: user!.id,
+    questId: milestone.quest_id,
+    title: parsed.data.title,
+    position: parsed.data.position,
+  });
+
+  if (!result.success) {
+    return NextResponse.json({ error: result.error }, { status: 500 });
   }
 
-  const { data: updated, error } = await supabase
-    .from('milestones')
-    .update(updates)
-    .eq('id', id)
-    .select()
-    .single();
-
-  if (error) {
-    return NextResponse.json({ error: 'Failed to update milestone.' }, { status: 500 });
-  }
-
-  if (parsed.data.position !== undefined) {
-    const { data: siblings } = await supabase
-      .from('milestones')
-      .select('id, position')
-      .eq('quest_id', milestone.quest_id)
-      .order('position', { ascending: true });
-
-    if (siblings) {
-      const normalized = normalizePositions(siblings);
-      for (const item of normalized) {
-        await supabase
-          .from('milestones')
-          .update({ position: item.position })
-          .eq('id', item.id);
-      }
-    }
-  }
-
-  return NextResponse.json(updated);
+  return NextResponse.json(result.entity);
 }
 
 export async function DELETE(
@@ -124,65 +96,44 @@ export async function DELETE(
   try {
     const body = await req.json();
     const parsed = deleteMilestoneSchema.safeParse(body);
-    if (parsed.success && parsed.data.force) {
-      force = true;
-    }
-  } catch {
-    // no body, no force flag
-  }
+    if (parsed.success && parsed.data.force) force = true;
+  } catch {}
 
   const supabase = createServerClient();
-
   const { data: milestone } = await supabase
     .from('milestones')
     .select('*')
     .eq('id', id)
     .single();
-
-  if (!milestone) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  }
+  if (!milestone) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   const membership = await getCallerMembership(milestone.quest_id, clerkUserId);
   if (!membership || !canDeleteMilestones(membership.role)) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
-  const { count } = await supabase
-    .from('actions')
-    .select('*', { count: 'exact', head: true })
-    .eq('milestone_id', id);
+  const { data: user } = await supabase
+    .from('users')
+    .select('id')
+    .eq('clerk_user_id', clerkUserId)
+    .single<{ id: string }>();
 
-  if (count && count > 0 && !force) {
-    return NextResponse.json(
-      {
-        error: 'Milestone contains actions. Set force: true to confirm deletion.',
-        actions_remaining: count,
-      },
-      { status: 409 }
-    );
-  }
+  const result = await deleteMilestoneService({
+    milestoneId: id,
+    actorId: user!.id,
+    questId: milestone.quest_id,
+    force,
+  });
 
-  const { error } = await supabase.from('milestones').delete().eq('id', id);
-
-  if (error) {
-    return NextResponse.json({ error: 'Failed to delete milestone.' }, { status: 500 });
-  }
-
-  const { data: siblings } = await supabase
-    .from('milestones')
-    .select('id, position')
-    .eq('quest_id', milestone.quest_id)
-    .order('position', { ascending: true });
-
-  if (siblings) {
-    const normalized = normalizePositions(siblings);
-    for (const item of normalized) {
-      await supabase
-        .from('milestones')
-        .update({ position: item.position })
-        .eq('id', item.id);
+  if (!result.success) {
+    if (result.error.includes('action(s)')) {
+      const count = parseInt(result.error.match(/\d+/)?.[0] ?? '0', 10);
+      return NextResponse.json(
+        { error: result.error, actions_remaining: count },
+        { status: 409 }
+      );
     }
+    return NextResponse.json({ error: result.error }, { status: 500 });
   }
 
   return NextResponse.json({ message: 'Milestone deleted.' });

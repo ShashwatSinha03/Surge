@@ -3,7 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { createServerClient } from '@/lib/supabase/server';
 import { createActionSchema } from '@/features/actions/schemas';
 import { getCallerMembership } from '@/lib/permissions/quest';
-import { calculateMilestoneStatus } from '@/lib/execution/state-machine';
+import { createActionService } from '@/features/actions/services/createAction';
 
 export async function POST(req: NextRequest) {
   const { userId: clerkUserId } = await auth();
@@ -20,29 +20,29 @@ export async function POST(req: NextRequest) {
   const { quest_id, milestone_id, title, description } = parsed.data;
 
   const supabase = createServerClient();
+  const { data: user } = await supabase
+    .from('users')
+    .select('id')
+    .eq('clerk_user_id', clerkUserId)
+    .single<{ id: string }>();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const membership = await getCallerMembership(quest_id, clerkUserId);
   if (!membership) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
-  const { data: action, error } = await supabase
-    .from('actions')
-    .insert({
-      quest_id,
-      milestone_id,
-      title,
-      description: description ?? null,
-      status: 'open',
-      owner_id: null,
-      created_by: membership.userId,
-    })
-    .select()
-    .single();
+  const result = await createActionService({
+    quest_id,
+    milestone_id,
+    title,
+    description: description ?? null,
+    actorId: user.id,
+  });
 
-  if (error) {
-    return NextResponse.json({ error: 'Failed to create action.' }, { status: 500 });
+  if (!result.success) {
+    return NextResponse.json({ error: result.error }, { status: 500 });
   }
 
-  return NextResponse.json(action, { status: 201 });
+  return NextResponse.json(result.entity, { status: 201 });
 }
