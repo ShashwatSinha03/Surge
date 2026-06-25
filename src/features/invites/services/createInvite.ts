@@ -1,4 +1,4 @@
-import { executeDomainMutation, makeEventKey } from '@/lib/events/executeDomainMutation';
+import { executeDomainMutation } from '@/lib/events/executeDomainMutation';
 import { inviteRepository } from '../repositories/inviteRepository';
 import { generateInviteToken, hashInviteToken } from '@/lib/invites/token';
 
@@ -29,7 +29,6 @@ export async function createInviteService(input: {
       entityId: '',
       eventType: 'MEMBER_INVITED',
     },
-    eventKey: makeEventKey('MEMBER_INVITED', input.quest_id),
   });
 
   if (result.success) {

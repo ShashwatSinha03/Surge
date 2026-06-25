@@ -3,7 +3,7 @@ import Link from 'next/link';
 
 type Props = {
   children: React.ReactNode;
-  variant?: 'primary' | 'secondary' | 'ghost';
+  variant?: 'primary' | 'secondary' | 'destructive';
   href?: string;
   className?: string;
   disabled?: boolean;
@@ -27,7 +27,8 @@ export function Button({
     primary: 'bg-accent text-accent-fg hover:opacity-90 disabled:opacity-40',
     secondary:
       'bg-surface border border-border text-fg hover:bg-surface-alt disabled:opacity-40',
-    ghost: 'text-muted hover:text-fg disabled:opacity-40',
+    destructive:
+      'bg-status-critical/10 text-status-critical border border-status-critical/20 hover:bg-status-critical/20 disabled:opacity-40',
   };
 
   const cls = cn(base, variants[variant], className);

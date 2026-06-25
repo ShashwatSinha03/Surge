@@ -4,6 +4,8 @@ import { createServerClient } from '@/lib/supabase/server';
 import { updateActionSchema } from '@/features/actions/schemas';
 import { getCallerMembership, canDeleteAction } from '@/lib/permissions/quest';
 import { deleteActionService } from '@/features/actions/services/deleteAction';
+import { executeDomainMutation, makeEventKey } from '@/lib/events/executeDomainMutation';
+import { actionRepository } from '@/features/actions/repositories/actionRepository';
 
 export async function PATCH(
   req: NextRequest,
@@ -33,18 +35,35 @@ export async function PATCH(
   const membership = await getCallerMembership(action.quest_id, clerkUserId);
   if (!membership) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
+  const { data: user } = await supabase
+    .from('users')
+    .select('id')
+    .eq('clerk_user_id', clerkUserId)
+    .single<{ id: string }>();
+
   const updates: Record<string, unknown> = {};
   if (parsed.data.title) updates.title = parsed.data.title;
   if (parsed.data.description !== undefined) updates.description = parsed.data.description;
 
-  const { data: updated } = await supabase
-    .from('actions')
-    .update(updates)
-    .eq('id', id)
-    .select()
-    .single();
+  const result = await executeDomainMutation({
+    mutation: async (query) => {
+      const entity = await actionRepository.update(query, id, updates);
+      if (!entity) throw new Error('Not found');
+      return { entity, changes: updates };
+    },
+    event: {
+      questId: action.quest_id,
+      actorId: user!.id,
+      entityType: 'ACTION',
+      entityId: id,
+      eventType: 'ACTION_UPDATED',
+    },
+    eventKey: makeEventKey('ACTION_UPDATED', id),
+  });
 
-  return NextResponse.json(updated);
+  if (!result.success) return NextResponse.json({ error: result.error }, { status: 500 });
+
+  return NextResponse.json(result.entity);
 }
 
 export async function DELETE(

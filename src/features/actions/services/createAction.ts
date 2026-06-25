@@ -1,4 +1,4 @@
-import { executeDomainMutation, makeEventKey } from '@/lib/events/executeDomainMutation';
+import { executeDomainMutation } from '@/lib/events/executeDomainMutation';
 import { actionRepository } from '../repositories/actionRepository';
 
 export async function createActionService(input: {
@@ -23,9 +23,8 @@ export async function createActionService(input: {
       questId: input.quest_id,
       actorId: input.actorId,
       entityType: 'ACTION',
-      entityId: '',  // set after insert
+      entityId: '',
       eventType: 'ACTION_CREATED',
     },
-    eventKey: makeEventKey('ACTION_CREATED', 'pending'),
   });
 }

@@ -6,6 +6,8 @@ import { usePathname } from 'next/navigation';
 const TABS = [
   { id: '', label: 'Overview' },
   { id: 'milestones', label: 'Milestones' },
+  { id: 'activity', label: 'Activity' },
+  { id: 'mission-control', label: 'Mission Control' },
   { id: 'team', label: 'Team' },
   { id: 'settings', label: 'Settings' },
 ] as const;
@@ -14,11 +16,15 @@ export function QuestTabs({ questId }: { questId: string }) {
   const pathname = usePathname();
   const currentTab = pathname.endsWith('/milestones')
     ? 'milestones'
-    : pathname.endsWith('/team')
-      ? 'team'
-      : pathname.endsWith('/settings')
-        ? 'settings'
-        : '';
+    : pathname.endsWith('/activity')
+      ? 'activity'
+      : pathname.endsWith('/mission-control')
+        ? 'mission-control'
+        : pathname.endsWith('/team')
+          ? 'team'
+          : pathname.endsWith('/settings')
+            ? 'settings'
+            : '';
 
   return (
     <nav className="flex gap-6 border-b border-border">

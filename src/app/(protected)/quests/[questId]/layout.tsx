@@ -2,6 +2,8 @@ import { notFound } from 'next/navigation';
 import { auth } from '@clerk/nextjs/server';
 import { createServerClient } from '@/lib/supabase/server';
 import { QuestTabs } from '@/features/quests/components/quest-tabs';
+import { QuestLayoutClient } from './quest-layout-client';
+import { Badge } from '@/components/ui/badge';
 import type { Quest } from '@/types';
 
 type Props = {
@@ -12,8 +14,8 @@ type Props = {
 export const dynamic = 'force-dynamic';
 
 export default async function QuestLayout({ children, params }: Props) {
-  const { userId } = await auth();
-  if (!userId) return null;
+  const { userId: clerkUserId } = await auth();
+  if (!clerkUserId) return null;
 
   const { questId } = await params;
 
@@ -21,9 +23,9 @@ export default async function QuestLayout({ children, params }: Props) {
 
   const { data: user } = await supabase
     .from('users')
-    .select('id')
-    .eq('clerk_user_id', userId)
-    .single<{ id: string }>();
+    .select('id, name, avatar_url')
+    .eq('clerk_user_id', clerkUserId)
+    .single<{ id: string; name: string; avatar_url: string | null }>();
 
   if (!user) return null;
 
@@ -56,14 +58,22 @@ export default async function QuestLayout({ children, params }: Props) {
           <div>
             <h1 className="text-2xl font-medium text-fg">{quest.title}</h1>
             <div className="flex items-center gap-3 mt-2">
-              <span className="text-xs text-muted bg-surface px-2.5 py-1 rounded-full capitalize">
+              <Badge variant="status" color={quest.status === 'completed' ? 'completed' : quest.status === 'active' ? 'healthy' : 'open'}>
                 {quest.status}
-              </span>
-              <span className="text-xs text-muted capitalize">
+              </Badge>
+              <span className="text-xs text-muted">
                 {quest.template_type.replace(/_/g, ' ')}
               </span>
             </div>
           </div>
+          <QuestLayoutClient
+            questId={questId}
+            userId={user.id}
+            userName={user.name}
+            userAvatar={user.avatar_url}
+          >
+            <div />
+          </QuestLayoutClient>
         </div>
       </header>
 

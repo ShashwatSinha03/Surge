@@ -1,7 +1,8 @@
-import { executeDomainMutation, makeEventKey } from '@/lib/events/executeDomainMutation';
+import { executeDomainMutation } from '@/lib/events/executeDomainMutation';
 import { inviteRepository } from '../repositories/inviteRepository';
 import { memberRepository } from '@/features/members/repositories/memberRepository';
 import { hashInviteToken } from '@/lib/invites/token';
+import { createServerClient } from '@/lib/supabase/server';
 
 export async function acceptInviteService(input: {
   token: string;
@@ -9,31 +10,51 @@ export async function acceptInviteService(input: {
 }) {
   const tokenHash = hashInviteToken(input.token);
 
+  const supabase = createServerClient();
+  const { data: invite } = await supabase
+    .from('invites')
+    .select('quest_id')
+    .eq('token_hash', tokenHash)
+    .single<{ quest_id: string }>();
+
+  if (!invite) {
+    const result = await executeDomainMutation({
+      mutation: async () => { throw new Error('Invalid or expired invite.'); },
+      event: {
+        questId: '',
+        actorId: input.actorId,
+        entityType: 'MEMBER',
+        entityId: '',
+        eventType: 'MEMBER_JOINED',
+      },
+    });
+    return result;
+  }
+
   return executeDomainMutation({
     mutation: async (query) => {
-      const invite = await inviteRepository.findByTokenHash(query, tokenHash);
-      if (!invite) throw new Error('Invalid or expired invite.');
-      if (invite.accepted_at) throw new Error('This invite has already been used.');
-      if (invite.revoked_at) throw new Error('This invite has been revoked.');
-      if (new Date(invite.expires_at) < new Date()) throw new Error('This invite has expired.');
+      const fullInvite = await inviteRepository.findByTokenHash(query, tokenHash);
+      if (!fullInvite) throw new Error('Invalid or expired invite.');
+      if (fullInvite.accepted_at) throw new Error('This invite has already been used.');
+      if (fullInvite.revoked_at) throw new Error('This invite has been revoked.');
+      if (new Date(fullInvite.expires_at) < new Date()) throw new Error('This invite has expired.');
 
       const member = await memberRepository.insert(query, {
-        quest_id: invite.quest_id,
+        quest_id: fullInvite.quest_id,
         user_id: input.actorId,
         role: 'member',
       });
 
-      await inviteRepository.accept(query, invite.id);
+      await inviteRepository.accept(query, fullInvite.id);
 
-      return { entity: member, changes: { questId: invite.quest_id } };
+      return { entity: member, changes: { questId: fullInvite.quest_id, joined: true } };
     },
     event: {
-      questId: '',
+      questId: invite.quest_id,
       actorId: input.actorId,
       entityType: 'MEMBER',
       entityId: '',
       eventType: 'MEMBER_JOINED',
     },
-    eventKey: makeEventKey('MEMBER_JOINED', input.actorId),
   });
 }

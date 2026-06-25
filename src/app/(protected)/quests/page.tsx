@@ -2,6 +2,8 @@ import { auth } from '@clerk/nextjs/server';
 import Link from 'next/link';
 import { createServerClient } from '@/lib/supabase/server';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { EmptyState } from '@/components/ui/empty-state';
 import type { QuestWithRole } from '@/types';
 
 export const dynamic = 'force-dynamic';
@@ -25,12 +27,11 @@ export default async function QuestsPage() {
           <h1 className="text-2xl font-medium text-fg">Quests</h1>
           <p className="text-muted text-sm mt-1">No quests yet.</p>
         </header>
-        <div className="text-center py-16">
-          <p className="text-muted mb-4">No quests yet. Create your first one.</p>
-          <Button href="/quests/new" variant="primary">
-            Create Your First Quest
-          </Button>
-        </div>
+        <EmptyState
+          title="No quests yet"
+          description="Create your first one."
+          action={<Button href="/quests/new" variant="primary">Create Your First Quest</Button>}
+        />
       </div>
     );
   }
@@ -63,6 +64,12 @@ export default async function QuestsPage() {
     }
   }
 
+  function questStatusColor(status: string) {
+    if (status === 'completed') return 'completed' as const;
+    if (status === 'active') return 'healthy' as const;
+    return 'open' as const;
+  }
+
   return (
     <div className="p-8 max-w-3xl">
       <header className="mb-10">
@@ -90,9 +97,9 @@ export default async function QuestsPage() {
                   {activeQuest.template_type.replace(/_/g, ' ')}
                 </p>
               </div>
-              <span className="text-xs text-muted bg-surface-alt px-2.5 py-1 rounded-full capitalize">
+              <Badge variant="status" color={questStatusColor(activeQuest.status)}>
                 {activeQuest.status}
-              </span>
+              </Badge>
             </div>
           </Link>
         </section>
@@ -109,12 +116,11 @@ export default async function QuestsPage() {
         </div>
 
         {quests.length === 0 ? (
-          <div className="text-center py-16">
-            <p className="text-muted mb-4">No quests yet. Create your first one.</p>
-            <Button href="/quests/new" variant="primary">
-              Create Your First Quest
-            </Button>
-          </div>
+          <EmptyState
+            title="No quests yet"
+            description="Create your first one."
+            action={<Button href="/quests/new" variant="primary">Create Your First Quest</Button>}
+          />
         ) : (
           <div className="space-y-2">
             {quests.map((quest) => (
@@ -129,7 +135,9 @@ export default async function QuestsPage() {
                     {quest.template_type.replace(/_/g, ' ')}
                   </p>
                 </div>
-                <span className="text-xs text-muted capitalize">{quest.status}</span>
+                <Badge variant="status" color={questStatusColor(quest.status)}>
+                  {quest.status}
+                </Badge>
               </Link>
             ))}
           </div>

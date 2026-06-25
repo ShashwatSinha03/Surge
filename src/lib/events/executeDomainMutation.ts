@@ -70,10 +70,19 @@ export async function executeDomainMutation(
 
         const snapshot = extractSnapshot(entity);
 
+        const { rows: actorRows } = await query(
+          'SELECT name, avatar_url FROM users WHERE id = $1',
+          [input.event.actorId]
+        );
+        const actor = actorRows[0]
+          ? { name: actorRows[0].name, avatar_url: actorRows[0].avatar_url }
+          : { name: 'Unknown', avatar_url: null };
+
         const metadata = JSON.stringify({
           version: 1,
           entitySnapshot: snapshot,
           changes,
+          actor,
           ...(input.event.metadata ?? {}),
         });
 

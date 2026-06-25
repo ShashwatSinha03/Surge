@@ -85,7 +85,7 @@ export default async function MilestonesPage({ params }: Props) {
   return (
     <JourneyBoard
       questId={questId}
-      milestones={boardData}
+      initialMilestones={boardData as any}
       currentUserId={membership.userId}
       currentUserRole={membership.role}
       canCreateMilestone={canManageMilestones(membership.role)}

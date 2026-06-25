@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createServerClient } from '@/lib/supabase/server';
 import { createQuestSchema } from '@/lib/validations/quest';
+import { createQuestService } from '@/features/quests/services/createQuest';
 
 export async function POST(req: NextRequest) {
-  const { userId } = await auth();
-  if (!userId) {
+  const { userId: clerkUserId } = await auth();
+  if (!clerkUserId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest) {
   const { data: user } = await supabase
     .from('users')
     .select('id')
-    .eq('clerk_user_id', userId)
+    .eq('clerk_user_id', clerkUserId)
     .single<{ id: string }>();
 
   if (!user) {
@@ -33,40 +34,18 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { data: quest, error: questError } = await supabase
-    .from('quests')
-    .insert({
-      title,
-      description: description ?? null,
-      template_type,
-      owner_id: user.id,
-      status: 'draft',
-    })
-    .select()
-    .single();
-
-  if (questError || !quest) {
-    return NextResponse.json(
-      { error: 'Failed to create quest.' },
-      { status: 500 }
-    );
-  }
-
-  const { error: memberError } = await supabase.from('quest_members').insert({
-    quest_id: quest.id,
-    user_id: user.id,
-    role: 'owner',
+  const result = await createQuestService({
+    title,
+    description: description ?? null,
+    template_type,
+    actorId: user.id,
   });
 
-  if (memberError) {
-    await supabase.from('quests').delete().eq('id', quest.id);
-    return NextResponse.json(
-      { error: 'Failed to create quest membership.' },
-      { status: 500 }
-    );
+  if (!result.success) {
+    return NextResponse.json({ error: result.error }, { status: 500 });
   }
 
-  return NextResponse.json(quest, { status: 201 });
+  return NextResponse.json(result.entity, { status: 201 });
 }
 
 export async function GET(req: NextRequest) {

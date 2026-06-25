@@ -1,4 +1,4 @@
-import { executeDomainMutation, makeEventKey } from '@/lib/events/executeDomainMutation';
+import { executeDomainMutation } from '@/lib/events/executeDomainMutation';
 import { milestoneRepository } from '../repositories/milestoneRepository';
 
 export async function createMilestoneService(input: {
@@ -24,6 +24,5 @@ export async function createMilestoneService(input: {
       entityId: '',
       eventType: 'MILESTONE_CREATED',
     },
-    eventKey: makeEventKey('MILESTONE_CREATED', input.quest_id),
   });
 }
