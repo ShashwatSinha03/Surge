@@ -71,8 +71,8 @@ export default async function QuestsPage() {
   }
 
   return (
-    <div className="p-8 max-w-3xl">
-      <header className="mb-10">
+    <div className="p-6 max-w-3xl">
+      <header className="mb-6">
         <h1 className="text-2xl font-medium text-fg">Quests</h1>
         <p className="text-muted text-sm mt-1">
           {quests.length > 0
@@ -82,8 +82,8 @@ export default async function QuestsPage() {
       </header>
 
       {activeQuest && (
-        <section className="mb-10">
-          <h2 className="text-xs text-muted/60 font-secondary tracking-widest uppercase mb-3">
+        <section className="mb-6">
+          <h2 className="text-xs text-muted/60 font-secondary tracking-widest uppercase mb-2">
             Continue Building
           </h2>
           <Link

@@ -2,12 +2,12 @@ import type { NextConfig } from 'next';
 
 const csp = [
   "default-src 'self'",
-  "script-src 'self'",
+  "script-src 'self' 'unsafe-inline' https://*.clerk.accounts.dev https://*.clerk.com https://api.clerk.com https://clerk.surge.dev",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' https://img.clerk.com data: blob:",
   "font-src 'self' data:",
-  "connect-src 'self' https://api.clerk.com",
-  "frame-src 'self' https://clerk.surge.dev",
+  "connect-src 'self' https://*.clerk.accounts.dev https://*.clerk.com https://api.clerk.com https://clerk.surge.dev",
+  "frame-src 'self' https://*.clerk.accounts.dev https://*.clerk.com https://clerk.surge.dev",
   "base-uri 'self'",
   "form-action 'self'",
   "frame-ancestors 'none'",

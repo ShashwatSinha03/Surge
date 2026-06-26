@@ -10,8 +10,8 @@ export default async function LandingPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-bg">
-      <div className="max-w-2xl text-center space-y-8">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 bg-bg">
+      <div className="max-w-2xl text-center space-y-6">
         <h1 className="text-4xl sm:text-5xl md:text-6xl font-medium leading-tight tracking-tight text-fg">
           Ship with momentum.
           <br />

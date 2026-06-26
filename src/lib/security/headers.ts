@@ -26,22 +26,28 @@ export function buildSecurityHeaders(isAuthenticated: boolean): SecurityHeaders 
   };
 }
 
+const CLERK_INSTANCES = [
+  'https://api.clerk.com',
+  'https://clerk.surge.dev',
+  'https://*.clerk.accounts.dev',
+  'https://*.clerk.com',
+];
+
 export function buildCsp(isAuthenticated: boolean): string {
   const directives: Record<string, string[]> = {
     'default-src': [SELF],
-    'script-src': [SELF],
+    'script-src': [SELF, "'unsafe-inline'", ...CLERK_INSTANCES],
     'style-src': [SELF, "'unsafe-inline'"],
     'img-src': [SELF, 'https://img.clerk.com', 'data:', 'blob:'],
     'font-src': [SELF, 'data:'],
     'connect-src': [
       SELF,
-      'https://api.clerk.com',
-      'https://clerk.surge.dev',
+      ...CLERK_INSTANCES,
       ...(process.env.NEXT_PUBLIC_SUPABASE_URL
         ? [process.env.NEXT_PUBLIC_SUPABASE_URL]
         : []),
     ],
-    'frame-src': [SELF, 'https://clerk.surge.dev'],
+    'frame-src': [SELF, ...CLERK_INSTANCES],
     'base-uri': [SELF],
     'form-action': [SELF],
     'frame-ancestors': [NONE],
