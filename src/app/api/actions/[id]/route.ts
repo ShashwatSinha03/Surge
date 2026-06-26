@@ -40,6 +40,7 @@ export async function PATCH(
     .select('id')
     .eq('clerk_user_id', clerkUserId)
     .single<{ id: string }>();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const updates: Record<string, unknown> = {};
   if (parsed.data.title) updates.title = parsed.data.title;
@@ -53,7 +54,7 @@ export async function PATCH(
     },
     event: {
       questId: action.quest_id,
-      actorId: user!.id,
+      actorId: user.id,
       entityType: 'ACTION',
       entityId: id,
       eventType: 'ACTION_UPDATED',
@@ -96,10 +97,11 @@ export async function DELETE(
     .select('id')
     .eq('clerk_user_id', clerkUserId)
     .single<{ id: string }>();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const result = await deleteActionService({
     actionId: id,
-    actorId: user!.id,
+    actorId: user.id,
     questId: action.quest_id,
   });
 

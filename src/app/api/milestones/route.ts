@@ -30,11 +30,12 @@ export async function POST(req: NextRequest) {
     .select('id')
     .eq('clerk_user_id', clerkUserId)
     .single<{ id: string }>();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const result = await createMilestoneService({
     quest_id,
     title,
-    actorId: user!.id,
+    actorId: user.id,
   });
 
   if (!result.success) {

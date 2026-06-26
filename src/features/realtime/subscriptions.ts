@@ -1,5 +1,7 @@
 import { createBrowserClient } from '@/lib/supabase/client';
-import { RealtimeChannel } from '@supabase/supabase-js';
+import { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
+
+const clientInstances = new WeakMap<RealtimeChannel, SupabaseClient>();
 
 export type SubscriptionConfig = {
   questId: string;
@@ -37,12 +39,12 @@ export function createQuestEventsChannel(config: SubscriptionConfig): RealtimeCh
     channel.subscribe();
   }
 
+  clientInstances.set(channel, supabase);
   return channel;
 }
 
-export function destroyChannel(channel: RealtimeChannel, accessToken?: string) {
-  const supabase = accessToken
-    ? createBrowserClient(accessToken)
-    : createBrowserClient();
+export function destroyChannel(channel: RealtimeChannel) {
+  const supabase = clientInstances.get(channel) ?? createBrowserClient();
   supabase.removeChannel(channel);
+  clientInstances.delete(channel);
 }

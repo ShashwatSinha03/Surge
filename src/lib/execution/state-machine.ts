@@ -2,7 +2,7 @@ import type { ActionStatus } from '@/types';
 
 const VALID_TRANSITIONS: Record<ActionStatus, ActionStatus[]> = {
   open: ['claimed', 'blocked'],
-  claimed: ['completed', 'blocked'],
+  claimed: ['completed', 'blocked', 'open'],
   blocked: ['claimed'],
   completed: [],
 };

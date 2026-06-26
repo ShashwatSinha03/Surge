@@ -5,6 +5,8 @@ import type { MemberRole } from '@/types';
 import type { MilestoneWithSync, ActionWithSync } from '@/features/realtime/realtimeTypes';
 import { useMilestoneMutations } from '@/hooks/useMilestoneMutations';
 import { presenceManager } from '@/features/realtime/presence';
+import { useToast } from '@/components/ui/toast';
+import { SrOnly } from '@/components/ui/sr-only';
 
 type Props = {
   questId: string;
@@ -23,9 +25,9 @@ function OwnerAvatar({ name, avatar_url }: { name: string | null; avatar_url: st
   return (
     <span className="inline-flex items-center gap-1.5 text-xs text-muted" title={name}>
       {avatar_url ? (
-        <img src={avatar_url} alt={name} className="w-4 h-4 rounded-full" />
+        <img src={avatar_url} alt={`${name}'s avatar`} className="w-4 h-4 rounded-full" />
       ) : (
-        <span className="w-4 h-4 rounded-full bg-surface-alt flex items-center justify-center text-[10px] font-medium">
+        <span className="w-4 h-4 rounded-full bg-surface-alt flex items-center justify-center text-[10px] font-medium" aria-hidden="true">
           {name.charAt(0).toUpperCase()}
         </span>
       )}
@@ -37,13 +39,13 @@ function OwnerAvatar({ name, avatar_url }: { name: string | null; avatar_url: st
 function StatusIcon({ status }: { status: string }) {
   switch (status) {
     case 'completed':
-      return <span className="text-green-400 shrink-0">✓</span>;
+      return <span className="text-green-400 shrink-0" aria-hidden="true">\u2713</span>;
     case 'claimed':
-      return <span className="text-blue-400 shrink-0">◉</span>;
+      return <span className="text-blue-400 shrink-0" aria-hidden="true">\u25C9</span>;
     case 'blocked':
-      return <span className="text-red-400 shrink-0">⊘</span>;
+      return <span className="text-red-400 shrink-0" aria-hidden="true">\u2298</span>;
     default:
-      return <span className="text-muted/30 shrink-0">□</span>;
+      return <span className="text-muted/30 shrink-0" aria-hidden="true">\u25A1</span>;
   }
 }
 
@@ -57,14 +59,16 @@ function StatusBadge({ status }: { status: string }) {
 
   return (
     <span className={`text-[11px] px-2 py-0.5 rounded-full ${styles[status] ?? styles.open}`}>
-      {status}
+      <SrOnly>Status: </SrOnly>{status}
     </span>
   );
 }
 
 function SyncingIndicator() {
   return (
-    <span className="w-3 h-3 rounded-full border border-blue-400 border-t-transparent animate-spin" />
+    <span className="w-3 h-3 rounded-full border border-blue-400 border-t-transparent animate-spin" role="status" aria-label="Syncing">
+      <SrOnly>Syncing...</SrOnly>
+    </span>
   );
 }
 
@@ -97,6 +101,7 @@ export function JourneyBoard({
     deleteAction,
   } = useMilestoneMutations(initialMilestones, questId, currentUserId);
 
+  const { toast } = useToast();
   const [newMilestoneTitle, setNewMilestoneTitle] = useState('');
   const [newActionTitles, setNewActionTitles] = useState<Record<string, string>>({});
   const [actionDescriptions, setActionDescriptions] = useState<Record<string, string>>({});
@@ -119,17 +124,97 @@ export function JourneyBoard({
 
   const isLoading = (key: string) => actionLoading === key;
 
+  async function handleClaim(actionId: string, title: string) {
+    try {
+      await claimAction(actionId, currentUserId);
+      toast({ type: 'success', message: 'Action claimed.', description: 'You are now responsible for this action.' });
+    } catch {
+      toast({ type: 'error', message: 'Unable to claim this action.', description: 'Another teammate may have already claimed it.' });
+    }
+  }
+
+  async function handleComplete(actionId: string, title: string) {
+    try {
+      await completeAction(actionId);
+      toast({ type: 'success', message: `"${title}" completed.`, description: 'Progress updated across the quest.' });
+    } catch {
+      toast({ type: 'error', message: 'Failed to complete action.' });
+    }
+  }
+
+  async function handleBlock(actionId: string, title: string) {
+    try {
+      await blockAction(actionId);
+      toast({ type: 'info', message: `"${title}" blocked.`, description: 'Add context in the action description for your team.' });
+    } catch {
+      toast({ type: 'error', message: 'Failed to block action.' });
+    }
+  }
+
+  async function handleUnclaim(actionId: string, title: string) {
+    try {
+      await unclaimAction(actionId);
+      toast({ type: 'info', message: 'Action unclaimed.', description: 'The action is now available for others to claim.' });
+    } catch {
+      toast({ type: 'error', message: 'Failed to unclaim action.' });
+    }
+  }
+
+  async function handleCreateMilestone() {
+    if (!newMilestoneTitle.trim()) return;
+    try {
+      await createMilestone(newMilestoneTitle.trim());
+      setNewMilestoneTitle('');
+      setShowNewMilestone(false);
+      toast({ type: 'success', message: 'Milestone created.' });
+    } catch {
+      toast({ type: 'error', message: 'Failed to create milestone.' });
+    }
+  }
+
+  async function handleDeleteMilestone(id: string) {
+    try {
+      await deleteMilestone(id);
+      toast({ type: 'success', message: 'Milestone deleted.' });
+    } catch {
+      toast({ type: 'error', message: 'Failed to delete milestone.' });
+    }
+  }
+
+  async function handleCreateAction(milestoneId: string) {
+    const title = (newActionTitles[milestoneId] ?? '').trim();
+    if (!title) return;
+    try {
+      await createAction(milestoneId, title, actionDescriptions[milestoneId]?.trim());
+      setNewActionTitles((prev) => ({ ...prev, [milestoneId]: '' }));
+      setActionDescriptions((prev) => ({ ...prev, [milestoneId]: '' }));
+      setShowNewAction((prev) => ({ ...prev, [milestoneId]: false }));
+      toast({ type: 'success', message: 'Action added.' });
+    } catch {
+      toast({ type: 'error', message: 'Failed to create action.' });
+    }
+  }
+
+  async function handleDeleteAction(id: string) {
+    try {
+      await deleteAction(id);
+      toast({ type: 'success', message: 'Action deleted.' });
+    } catch {
+      toast({ type: 'error', message: 'Failed to delete action.' });
+    }
+  }
+
   return (
     <div className="space-y-6">
       {error && (
-        <div className="text-sm text-red-400 bg-red-400/5 border border-red-400/20 rounded-lg px-4 py-2">
+        <div className="text-sm text-red-400 bg-red-400/5 border border-red-400/20 rounded-lg px-4 py-2" role="alert">
           {error}
         </div>
       )}
 
-      <section className="flex items-center gap-6">
+      <section className="flex items-center gap-6" aria-label="Action statistics">
         <div className="text-sm text-muted">
-          <span className="text-fg font-medium">{displayStats.total}</span> total
+          <span className="text-fg font-medium">{displayStats.total}</span> <SrOnly>Total: </SrOnly>total
         </div>
         {displayStats.completed > 0 && (
           <div className="text-sm text-green-400">
@@ -159,24 +244,18 @@ export function JourneyBoard({
                 className="flex-1 px-3 py-2 rounded-lg bg-surface border border-border text-fg text-sm focus:outline-none focus:border-fg/40"
                 onKeyDown={async (e) => {
                   if (e.key === 'Enter' && newMilestoneTitle.trim()) {
-                    await createMilestone(newMilestoneTitle.trim());
-                    setNewMilestoneTitle('');
-                    setShowNewMilestone(false);
+                    await handleCreateMilestone();
                   }
                 }}
                 autoFocus
+                aria-label="New milestone title"
               />
               <button
-                onClick={async () => {
-                  if (!newMilestoneTitle.trim()) return;
-                  await createMilestone(newMilestoneTitle.trim());
-                  setNewMilestoneTitle('');
-                  setShowNewMilestone(false);
-                }}
+                onClick={handleCreateMilestone}
                 disabled={isLoading('new-milestone')}
                 className="px-3 py-2 rounded-lg bg-accent text-accent-fg text-sm font-medium hover:opacity-90 disabled:opacity-40"
               >
-                {isLoading('new-milestone') ? '...' : 'Create'}
+                {isLoading('new-milestone') ? 'Creating...' : 'Create'}
               </button>
               <button
                 onClick={() => { setShowNewMilestone(false); setNewMilestoneTitle(''); }}
@@ -198,7 +277,7 @@ export function JourneyBoard({
 
       <div className="space-y-8">
         {milestones.map((milestone) => (
-          <section key={milestone.id} className="space-y-2">
+          <section key={milestone.id} className="space-y-2" aria-labelledby={`milestone-heading-${milestone.id}`}>
             <div className="flex items-center gap-3">
               {editingMilestone === milestone.id ? (
                 <div className="flex gap-2 items-center flex-1">
@@ -213,6 +292,7 @@ export function JourneyBoard({
                       }
                     }}
                     autoFocus
+                    aria-label="Edit milestone title"
                   />
                   <button onClick={async () => {
                     if (editMilestoneTitle.trim()) {
@@ -224,7 +304,7 @@ export function JourneyBoard({
                 </div>
               ) : (
                 <>
-                  <h2 className="text-base font-medium text-fg">{milestone.title}</h2>
+                  <h2 id={`milestone-heading-${milestone.id}`} className="text-base font-medium text-fg">{milestone.title}</h2>
                   <StatusBadge status={milestone.status} />
                   {milestone._syncing && <SyncingIndicator />}
                   {canManageMilestones && (
@@ -232,15 +312,17 @@ export function JourneyBoard({
                       <button
                         onClick={() => { setEditingMilestone(milestone.id); setEditMilestoneTitle(milestone.title); presenceManager.updateContext('milestones', `Editing ${milestone.title}`); }}
                         className="text-[11px] text-muted hover:text-fg"
+                        aria-label={`Edit "${milestone.title}"`}
                       >
                         Edit
                       </button>
                       <button
-                        onClick={() => deleteMilestone(milestone.id)}
+                        onClick={() => handleDeleteMilestone(milestone.id)}
                         disabled={isLoading(`del-milestone-${milestone.id}`)}
                         className="text-[11px] text-red-400 hover:text-red-300"
+                        aria-label={`Delete "${milestone.title}"`}
                       >
-                        {isLoading(`del-milestone-${milestone.id}`) ? '...' : 'Delete'}
+                        {isLoading(`del-milestone-${milestone.id}`) ? 'Deleting...' : 'Delete'}
                       </button>
                     </div>
                   )}
@@ -248,11 +330,13 @@ export function JourneyBoard({
               )}
             </div>
 
-            <div className="border-t border-border" />
+            <div className="border-t border-border" role="separator" />
 
             <div className="space-y-1 pl-1">
               {milestone.actions.length === 0 && (
-                <p className="text-xs text-muted/40 py-2">No actions yet.</p>
+                <p className="text-xs text-muted/40 py-2">
+                  No actions yet. {canManageMilestones && 'Add an action to get started.'}
+                </p>
               )}
 
               {milestone.actions.map((action) => (
@@ -275,12 +359,14 @@ export function JourneyBoard({
                           }
                         }}
                         autoFocus
+                        aria-label="Edit action title"
                       />
                       <input
                         value={editActionDescription}
                         onChange={(e) => setEditActionDescription(e.target.value)}
                         placeholder="Description (optional)"
                         className="px-2 py-1 rounded bg-surface border border-border text-muted text-xs focus:outline-none"
+                        aria-label="Edit action description"
                       />
                       <div className="flex gap-2">
                         <button onClick={async () => {
@@ -315,45 +401,50 @@ export function JourneyBoard({
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         {action.status === 'open' && (
                           <button
-                            onClick={() => { claimAction(action.id, currentUserId); presenceManager.updateContext('milestones', `Claiming ${action.title}`); }}
+                            onClick={() => { handleClaim(action.id, action.title); presenceManager.updateContext('milestones', `Claiming ${action.title}`); }}
                             disabled={isLoading(`claim-${action.id}`)}
                             className="text-xs text-muted hover:text-blue-400 px-1.5 py-0.5 rounded hover:bg-blue-400/5"
+                            aria-label={`Claim "${action.title}"`}
                           >
                             Claim
                           </button>
                         )}
                         {action.status === 'open' && (
                           <button
-                            onClick={() => { blockAction(action.id); presenceManager.updateContext('milestones', `Blocking ${action.title}`); }}
+                            onClick={() => { handleBlock(action.id, action.title); presenceManager.updateContext('milestones', `Blocking ${action.title}`); }}
                             disabled={isLoading(`block-${action.id}`)}
                             className="text-xs text-muted hover:text-red-400 px-1.5 py-0.5 rounded hover:bg-red-400/5"
+                            aria-label={`Block "${action.title}"`}
                           >
                             Block
                           </button>
                         )}
                         {action.status === 'claimed' && action.owner_id === currentUserId && (
                           <button
-                            onClick={() => { completeAction(action.id); presenceManager.updateContext('milestones', `Completing ${action.title}`); }}
+                            onClick={() => { handleComplete(action.id, action.title); presenceManager.updateContext('milestones', `Completing ${action.title}`); }}
                             disabled={isLoading(`complete-${action.id}`)}
                             className="text-xs text-muted hover:text-green-400 px-1.5 py-0.5 rounded hover:bg-green-400/5"
+                            aria-label={`Complete "${action.title}"`}
                           >
                             Done
                           </button>
                         )}
                         {(action.status === 'claimed' || action.status === 'blocked') && (
                           <button
-                            onClick={() => unclaimAction(action.id)}
+                            onClick={() => handleUnclaim(action.id, action.title)}
                             disabled={isLoading(`unclaim-${action.id}`)}
                             className="text-xs text-muted hover:text-yellow-400 px-1.5 py-0.5 rounded hover:bg-yellow-400/5"
+                            aria-label={`Unclaim "${action.title}"`}
                           >
                             Unclaim
                           </button>
                         )}
                         {action.status === 'blocked' && (
                           <button
-                            onClick={() => claimAction(action.id, currentUserId)}
+                            onClick={() => handleClaim(action.id, action.title)}
                             disabled={isLoading(`claim-${action.id}`)}
                             className="text-xs text-muted hover:text-blue-400 px-1.5 py-0.5 rounded hover:bg-blue-400/5"
+                            aria-label={`Reclaim "${action.title}"`}
                           >
                             Reclaim
                           </button>
@@ -364,16 +455,18 @@ export function JourneyBoard({
                         <button
                           onClick={() => { setEditingAction(action.id); setEditActionTitle(action.title); setEditActionDescription(action.description ?? ''); presenceManager.updateContext('milestones', `Editing ${action.title}`); }}
                           className="text-xs text-muted/30 hover:text-muted px-1.5 py-0.5"
+                          aria-label={`Edit "${action.title}"`}
                         >
                           Edit
                         </button>
                         {canDeleteAction && (
                           <button
-                            onClick={() => deleteAction(action.id)}
+                            onClick={() => handleDeleteAction(action.id)}
                             disabled={isLoading(`delete-action-${action.id}`)}
                             className="text-xs text-muted/30 hover:text-red-400 px-1.5 py-0.5"
+                            aria-label={`Delete "${action.title}"`}
                           >
-                            ×
+                            \u00D7
                           </button>
                         )}
                       </div>
@@ -392,27 +485,18 @@ export function JourneyBoard({
                       className="flex-1 px-2 py-1.5 rounded bg-surface border border-border text-fg text-sm focus:outline-none focus:border-fg/40"
                       onKeyDown={async (e) => {
                         if (e.key === 'Enter' && (newActionTitles[milestone.id] ?? '').trim()) {
-                          await createAction(milestone.id, (newActionTitles[milestone.id] ?? '').trim(), actionDescriptions[milestone.id]?.trim());
-                          setNewActionTitles((prev) => ({ ...prev, [milestone.id]: '' }));
-                          setActionDescriptions((prev) => ({ ...prev, [milestone.id]: '' }));
-                          setShowNewAction((prev) => ({ ...prev, [milestone.id]: false }));
+                          await handleCreateAction(milestone.id);
                         }
                       }}
                       autoFocus
+                      aria-label="New action title"
                     />
                     <button
-                      onClick={async () => {
-                        const title = (newActionTitles[milestone.id] ?? '').trim();
-                        if (!title) return;
-                        await createAction(milestone.id, title, actionDescriptions[milestone.id]?.trim());
-                        setNewActionTitles((prev) => ({ ...prev, [milestone.id]: '' }));
-                        setActionDescriptions((prev) => ({ ...prev, [milestone.id]: '' }));
-                        setShowNewAction((prev) => ({ ...prev, [milestone.id]: false }));
-                      }}
+                      onClick={() => handleCreateAction(milestone.id)}
                       disabled={isLoading(`new-action-${milestone.id}`)}
                       className="px-2 py-1.5 rounded bg-accent text-accent-fg text-xs font-medium hover:opacity-90 disabled:opacity-40"
                     >
-                      {isLoading(`new-action-${milestone.id}`) ? '...' : 'Add'}
+                      {isLoading(`new-action-${milestone.id}`) ? 'Adding...' : 'Add'}
                     </button>
                     <button
                       onClick={() => setShowNewAction((prev) => ({ ...prev, [milestone.id]: false }))}
@@ -435,8 +519,12 @@ export function JourneyBoard({
         ))}
 
         {milestones.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-sm text-muted">No milestones yet. Create your first one.</p>
+          <div className="text-center py-12" aria-live="polite">
+            <p className="text-sm text-muted">
+              {canCreateMilestone
+                ? 'No milestones yet. Create your first one to organize your quest into phases.'
+                : 'No milestones have been created yet.'}
+            </p>
           </div>
         )}
       </div>

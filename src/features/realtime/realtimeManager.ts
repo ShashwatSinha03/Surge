@@ -12,53 +12,63 @@ type ChannelEntry = {
 
 class RealtimeManager {
   private activeChannels = new Map<string, ChannelEntry>();
+  private refCounts = new Map<string, number>();
   private lastCursors = new Map<string, string>();
 
   subscribeToQuest(questId: string, accessToken?: string): () => void {
     const key = `events:${questId}`;
-    if (this.activeChannels.has(key)) {
-      const existing = this.activeChannels.get(key)!;
-      return () => this.unsubscribeFromQuest(existing.questId);
+
+    const existing = this.refCounts.get(key) ?? 0;
+    this.refCounts.set(key, existing + 1);
+
+    if (!this.activeChannels.has(key)) {
+      const channel = createQuestEventsChannel({
+        questId,
+        accessToken,
+        onEvent: (payload: RawEventRow) => {
+          realtimeBus.dispatch(`quest:${questId}`, {
+            type: 'domain_event',
+            event: payload,
+            receivedAt: new Date().toISOString(),
+          });
+        },
+        onStatusChange: (status) => {
+          switch (status) {
+            case 'SUBSCRIBED':
+              connectionState.connect();
+              void this.replayMissedEvents(questId, accessToken);
+              break;
+            case 'CHANNEL_ERROR':
+            case 'TIMED_OUT':
+              connectionState.reconnecting();
+              break;
+            case 'CLOSED':
+              connectionState.disconnect();
+              break;
+          }
+        },
+      });
+
+      this.activeChannels.set(key, { channel, questId });
     }
 
-    const channel = createQuestEventsChannel({
-      questId,
-      accessToken,
-      onEvent: (payload: RawEventRow) => {
-        realtimeBus.dispatch(`quest:${questId}`, {
-          type: 'domain_event',
-          event: payload,
-          receivedAt: new Date().toISOString(),
-        });
-      },
-      onStatusChange: (status) => {
-        switch (status) {
-          case 'SUBSCRIBED':
-            connectionState.connect();
-            break;
-          case 'CHANNEL_ERROR':
-          case 'TIMED_OUT':
-            connectionState.reconnecting();
-            break;
-          case 'CLOSED':
-            connectionState.disconnect();
-            break;
-        }
-      },
-    });
-
-    this.activeChannels.set(key, { channel, questId });
-
-    return () => this.unsubscribeFromQuest(questId);
+    return () => this.unsubscribeFromQuest(key);
   }
 
-  private unsubscribeFromQuest(questId: string) {
-    const key = `events:${questId}`;
-    const entry = this.activeChannels.get(key);
-    if (!entry) return;
-    destroyChannel(entry.channel);
-    this.activeChannels.delete(key);
-    this.lastCursors.delete(questId);
+  private unsubscribeFromQuest(key: string) {
+    const remaining = (this.refCounts.get(key) ?? 1) - 1;
+
+    if (remaining <= 0) {
+      this.refCounts.delete(key);
+      const entry = this.activeChannels.get(key);
+      if (entry) {
+        destroyChannel(entry.channel);
+        this.activeChannels.delete(key);
+        this.lastCursors.delete(entry.questId);
+      }
+    } else {
+      this.refCounts.set(key, remaining);
+    }
   }
 
   setCursor(questId: string, cursor: string) {
@@ -98,6 +108,7 @@ class RealtimeManager {
     for (const [key, entry] of this.activeChannels) {
       destroyChannel(entry.channel);
       this.activeChannels.delete(key);
+      this.refCounts.delete(key);
     }
     this.lastCursors.clear();
     connectionState.disconnect();

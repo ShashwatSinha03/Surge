@@ -3,13 +3,13 @@ import type { MemberRole } from '@/types';
 
 export const memberRepository = {
   async findById(query: QueryExecutor, id: string) {
-    const { rows } = await query('SELECT * FROM quest_members WHERE id = $1', [id]);
+    const { rows } = await query('SELECT * FROM quest_members WHERE id = $1 FOR UPDATE', [id]);
     return rows[0] ?? null;
   },
 
   async findByQuestAndUser(query: QueryExecutor, questId: string, userId: string) {
     const { rows } = await query(
-      'SELECT * FROM quest_members WHERE quest_id = $1 AND user_id = $2',
+      'SELECT * FROM quest_members WHERE quest_id = $1 AND user_id = $2 FOR UPDATE',
       [questId, userId]
     );
     return rows[0] ?? null;

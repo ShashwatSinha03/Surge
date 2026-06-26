@@ -31,6 +31,7 @@ export type DomainMutationInput = {
     metadata?: Record<string, unknown>;
   };
   eventKey?: string;
+  requestId?: string;
 };
 
 export type DomainResultSuccess = {
@@ -42,6 +43,7 @@ export type DomainResultSuccess = {
 export type DomainResultFailure = {
   success: false;
   error: string;
+  code?: string;
 };
 
 export type DomainResult = DomainResultSuccess | DomainResultFailure;
@@ -83,6 +85,7 @@ export async function executeDomainMutation(
           entitySnapshot: snapshot,
           changes,
           actor,
+          requestId: input.requestId,
           ...(input.event.metadata ?? {}),
         });
 
@@ -111,6 +114,10 @@ export async function executeDomainMutation(
     ) {
       return { success: true as const, entity: {}, event: {} };
     }
-    return { success: false, error: error?.message ?? 'Domain mutation failed.' };
+    return {
+      success: false,
+      error: error?.message ?? 'Domain mutation failed.',
+      code: error?.code,
+    };
   }
 }

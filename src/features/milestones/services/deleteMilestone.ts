@@ -1,20 +1,31 @@
+import { z } from 'zod';
 import { executeDomainMutation, makeEventKey } from '@/lib/events/executeDomainMutation';
 import { milestoneRepository } from '../repositories/milestoneRepository';
+import { validate, uuid, entityId, questId } from '@/lib/validation/service-input';
 
-export async function deleteMilestoneService(input: {
-  milestoneId: string;
-  actorId: string;
-  questId: string;
-  force?: boolean;
-}) {
+const schema = z.object({
+  milestoneId: entityId,
+  actorId: uuid,
+  questId,
+  force: z.boolean().optional(),
+});
+
+function serviceError(code: string, message: string): never {
+  const err = new Error(message);
+  (err as any).code = code;
+  throw err;
+}
+
+export async function deleteMilestoneService(input: z.infer<typeof schema>) {
+  validate(schema, input, 'deleteMilestoneService');
   return executeDomainMutation({
     mutation: async (query) => {
       const milestone = await milestoneRepository.findById(query, input.milestoneId);
-      if (!milestone) throw new Error('Milestone not found');
+      if (!milestone) serviceError('NOT_FOUND', 'Milestone not found');
 
       const count = await milestoneRepository.countActions(query, input.milestoneId);
       if (count > 0 && !input.force) {
-        throw new Error(`Milestone has ${count} action(s). Set force: true to confirm.`);
+        serviceError('ACTIONS_REMAINING', `Milestone has ${count} action(s). Set force: true to confirm.`);
       }
 
       const entity = await milestoneRepository.delete(query, input.milestoneId);

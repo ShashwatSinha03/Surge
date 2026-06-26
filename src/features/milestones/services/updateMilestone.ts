@@ -1,14 +1,19 @@
+import { z } from 'zod';
 import { executeDomainMutation, makeEventKey } from '@/lib/events/executeDomainMutation';
 import { milestoneRepository } from '../repositories/milestoneRepository';
 import { normalizePositions } from '@/lib/execution/state-machine';
+import { validate, uuid, entityId, questId } from '@/lib/validation/service-input';
 
-export async function updateMilestoneService(input: {
-  milestoneId: string;
-  actorId: string;
-  questId: string;
-  title?: string;
-  position?: number;
-}) {
+const schema = z.object({
+  milestoneId: entityId,
+  actorId: uuid,
+  questId,
+  title: z.string().min(1).max(200).optional(),
+  position: z.number().int().positive().optional(),
+});
+
+export async function updateMilestoneService(input: z.infer<typeof schema>) {
+  validate(schema, input, 'updateMilestoneService');
   return executeDomainMutation({
     mutation: async (query) => {
       const milestone = await milestoneRepository.findById(query, input.milestoneId);

@@ -1,11 +1,16 @@
+import { z } from 'zod';
 import { executeDomainMutation, makeEventKey } from '@/lib/events/executeDomainMutation';
 import { memberRepository } from '../repositories/memberRepository';
+import { validate, uuid, entityId, questId } from '@/lib/validation/service-input';
 
-export async function removeMemberService(input: {
-  memberId: string;
-  actorId: string;
-  questId: string;
-}) {
+const schema = z.object({
+  memberId: entityId,
+  actorId: uuid,
+  questId,
+});
+
+export async function removeMemberService(input: z.infer<typeof schema>) {
+  validate(schema, input, 'removeMemberService');
   return executeDomainMutation({
     mutation: async (query) => {
       const target = await memberRepository.findById(query, input.memberId);

@@ -44,11 +44,15 @@ export async function GET(request: NextRequest) {
     ...(questId ? [actionSearchProvider, milestoneSearchProvider, memberSearchProvider] : []),
   ];
 
-  const allResults = await Promise.all(
-    providers.map((p) => p.search(q.trim(), context)),
-  );
-
-  const results: SearchResult[] = allResults.flat();
+  const results: SearchResult[] = [];
+  for (const provider of providers) {
+    try {
+      const providerResults = await provider.search(q.trim(), context);
+      results.push(...providerResults);
+    } catch {
+      // Provider failure is isolated — continue with remaining providers
+    }
+  }
 
   return NextResponse.json({ results });
 }

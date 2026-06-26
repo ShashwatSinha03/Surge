@@ -1,13 +1,18 @@
+import { z } from 'zod';
 import { executeDomainMutation, makeEventKey } from '@/lib/events/executeDomainMutation';
 import { questRepository } from '../repositories/questRepository';
 import { memberRepository } from '@/features/members/repositories/memberRepository';
+import { validate, uuid } from '@/lib/validation/service-input';
 
-export async function createQuestService(input: {
-  title: string;
-  description: string | null;
-  template_type: string;
-  actorId: string;
-}) {
+const schema = z.object({
+  title: z.string().min(1).max(200),
+  description: z.string().nullable(),
+  template_type: z.string().min(1),
+  actorId: uuid,
+});
+
+export async function createQuestService(input: z.infer<typeof schema>) {
+  validate(schema, input, 'createQuestService');
   return executeDomainMutation({
     mutation: async (query) => {
       const entity = await questRepository.insert(query, {

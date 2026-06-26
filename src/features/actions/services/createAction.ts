@@ -1,13 +1,18 @@
+import { z } from 'zod';
 import { executeDomainMutation } from '@/lib/events/executeDomainMutation';
 import { actionRepository } from '../repositories/actionRepository';
+import { validate, uuid, entityId } from '@/lib/validation/service-input';
 
-export async function createActionService(input: {
-  quest_id: string;
-  milestone_id: string;
-  title: string;
-  description: string | null;
-  actorId: string;
-}) {
+const schema = z.object({
+  quest_id: uuid,
+  milestone_id: entityId,
+  title: z.string().min(1).max(200),
+  description: z.string().nullable(),
+  actorId: uuid,
+});
+
+export async function createActionService(input: z.infer<typeof schema>) {
+  validate(schema, input, 'createActionService');
   return executeDomainMutation({
     mutation: async (query) => {
       const entity = await actionRepository.insert(query, {

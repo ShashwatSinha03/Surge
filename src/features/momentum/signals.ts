@@ -2,28 +2,30 @@ import type { SignalPack } from './types';
 import { momentumRepository } from './repository';
 import { TREND_WINDOW_DAYS, STALE_DAYS, ORPHAN_DAYS, LONG_RUNNING_DAYS } from './weights';
 
-async function extractVelocitySignals(questId: string) {
+const MS_PER_DAY = 86400000;
+
+async function extractVelocitySignals(questId: string, timeOffset = 0) {
   const actions = await momentumRepository.getActions(questId);
   const milestones = await momentumRepository.getMilestones(questId);
-  const events = await momentumRepository.getEvents(questId, TREND_WINDOW_DAYS * 2);
-  const today = Date.now();
+  const events = await momentumRepository.getEvents(questId, TREND_WINDOW_DAYS * 2 + timeOffset);
 
   const completed = actions.filter((a) => a.status === 'completed');
   const totalActions = actions.length;
   const completedMilestones = milestones.filter((m) => m.status === 'completed').length;
 
-  const now = new Date();
-  const windowStart = new Date(now.getTime() - TREND_WINDOW_DAYS * 86400000);
-  const prevWindowStart = new Date(windowStart.getTime() - TREND_WINDOW_DAYS * 86400000);
+  const offsetMs = timeOffset * MS_PER_DAY;
+  const shiftedNow = Date.now() - offsetMs;
+  const windowStart = shiftedNow - TREND_WINDOW_DAYS * MS_PER_DAY;
+  const prevWindowStart = windowStart - TREND_WINDOW_DAYS * MS_PER_DAY;
 
   const recentCompletions = completed.filter(
-    (a) => new Date(a.created_at).getTime() > windowStart.getTime(),
+    (a) => new Date(a.created_at).getTime() > windowStart,
   );
 
   const prevCompletions = completed.filter(
     (a) => {
       const t = new Date(a.created_at).getTime();
-      return t > prevWindowStart.getTime() && t <= windowStart.getTime();
+      return t > prevWindowStart && t <= windowStart;
     },
   );
 
@@ -48,18 +50,23 @@ async function extractVelocitySignals(questId: string) {
   };
 }
 
-async function extractOwnershipSignals(questId: string) {
+async function extractOwnershipSignals(questId: string, timeOffset = 0) {
   const actions = await momentumRepository.getActions(questId);
-  const today = Date.now();
-  const orphanThreshold = today - ORPHAN_DAYS * 86400000;
+  const offsetMs = timeOffset * MS_PER_DAY;
+  const refTime = Date.now() - offsetMs;
+  const orphanThreshold = refTime - ORPHAN_DAYS * MS_PER_DAY;
 
-  const claimed = actions.filter((a) => a.owner_id);
-  const unclaimed = actions.filter((a) => !a.owner_id);
+  const relevant = timeOffset > 0
+    ? actions.filter((a) => new Date(a.created_at).getTime() < refTime)
+    : actions;
+
+  const claimed = relevant.filter((a) => a.owner_id);
+  const unclaimed = relevant.filter((a) => !a.owner_id);
   const uniqueOwners = new Set(claimed.map((a) => a.owner_id)).size;
 
   const orphaned = unclaimed.filter((a) => new Date(a.created_at).getTime() < orphanThreshold);
   const oldestOrphan = orphaned.length > 0
-    ? Math.round((today - Math.min(...orphaned.map((a) => new Date(a.created_at).getTime()))) / 86400000)
+    ? Math.round((refTime - Math.min(...orphaned.map((a) => new Date(a.created_at).getTime()))) / MS_PER_DAY)
     : 0;
 
   const actionCounts = new Map<string, number>();
@@ -73,11 +80,11 @@ async function extractOwnershipSignals(questId: string) {
     : 0;
 
   return {
-    claimedActions: { count: claimed.length, total: actions.length },
-    unclaimedRatio: actions.length > 0 ? Math.round((unclaimed.length / actions.length) * 100) : 0,
+    claimedActions: { count: claimed.length, total: relevant.length },
+    unclaimedRatio: relevant.length > 0 ? Math.round((unclaimed.length / relevant.length) * 100) : 0,
     ownerDistribution: {
       uniqueOwners,
-      totalActions: actions.length,
+      totalActions: relevant.length,
       concentration,
     },
     orphanedWork: {
@@ -88,19 +95,27 @@ async function extractOwnershipSignals(questId: string) {
   };
 }
 
-async function extractStabilitySignals(questId: string) {
+async function extractStabilitySignals(questId: string, timeOffset = 0) {
   const actions = await momentumRepository.getActions(questId);
   const milestones = await momentumRepository.getMilestones(questId);
   const events = await momentumRepository.getEvents(questId);
-  const today = Date.now();
-  const staleThreshold = today - STALE_DAYS * 86400000;
+  const offsetMs = timeOffset * MS_PER_DAY;
+  const refTime = Date.now() - offsetMs;
+  const staleThreshold = refTime - STALE_DAYS * MS_PER_DAY;
 
-  const blocked = actions.filter((a) => a.status === 'blocked');
+  const relevantActions = timeOffset > 0
+    ? actions.filter((a) => new Date(a.created_at).getTime() < refTime)
+    : actions;
+  const relevantMilestones = timeOffset > 0
+    ? milestones.filter((m) => new Date(m.created_at).getTime() < refTime)
+    : milestones;
+
+  const blocked = relevantActions.filter((a) => a.status === 'blocked');
   const blockedSeverity = blocked.length === 0 ? 'low' as const
     : blocked.length <= 2 ? 'medium' as const
     : 'high' as const;
 
-  const staleMilestones = milestones.filter((m) => {
+  const staleMilestones = relevantMilestones.filter((m) => {
     if (m.status === 'completed') return false;
     const msEvents = events.filter((e) => e.event_type?.includes('MILESTONE_'));
     const lastEvent = msEvents.length > 0
@@ -110,29 +125,37 @@ async function extractStabilitySignals(questId: string) {
   });
 
   const oldestStale = staleMilestones.length > 0
-    ? Math.round((today - Math.min(...staleMilestones.map((m) => new Date(m.created_at).getTime()))) / 86400000)
+    ? Math.round((refTime - Math.min(...staleMilestones.map((m) => new Date(m.created_at).getTime()))) / MS_PER_DAY)
     : 0;
 
-  const longRunning = actions.filter((a) => {
+  const longRunning = relevantActions.filter((a) => {
     if (a.status === 'completed' || a.status === 'blocked') return false;
-    const age = today - new Date(a.created_at).getTime();
-    return age > LONG_RUNNING_DAYS * 86400000;
+    const age = refTime - new Date(a.created_at).getTime();
+    return age > LONG_RUNNING_DAYS * MS_PER_DAY;
   });
 
   const oldestLongRunning = longRunning.length > 0
-    ? Math.round((today - Math.min(...longRunning.map((a) => new Date(a.created_at).getTime()))) / 86400000)
+    ? Math.round((refTime - Math.min(...longRunning.map((a) => new Date(a.created_at).getTime()))) / MS_PER_DAY)
     : 0;
+
+  const milestoneTitles = new Map(relevantMilestones.map((m) => [m.id, m.title]));
+  const blockedWithNames = blocked.map((a) => ({
+    id: a.id,
+    title: a.title,
+    milestoneTitle: milestoneTitles.get(a.milestone_id) ?? 'Unknown',
+  }));
+  const staleWithNames = staleMilestones.map((m) => ({ id: m.id, title: m.title }));
 
   return {
     blockedActions: {
       count: blocked.length,
       severity: blockedSeverity,
-      items: blocked.map((a) => ({ id: a.id, title: a.title })),
+      items: blockedWithNames,
     },
     staleMilestones: {
       count: staleMilestones.length,
       oldestDays: oldestStale,
-      items: staleMilestones.map((m) => ({ id: m.id, title: m.title })),
+      items: staleWithNames,
     },
     longRunningActions: {
       count: longRunning.length,
@@ -142,13 +165,20 @@ async function extractStabilitySignals(questId: string) {
   };
 }
 
-async function extractEngagementSignals(questId: string) {
-  const events = await momentumRepository.getEvents(questId, TREND_WINDOW_DAYS);
+async function extractEngagementSignals(questId: string, timeOffset = 0) {
+  const offsetMs = timeOffset * MS_PER_DAY;
+  const refTime = Date.now() - offsetMs;
+  const windowStart = refTime - TREND_WINDOW_DAYS * MS_PER_DAY;
+
   const allEvents = await momentumRepository.getEvents(questId);
   const members = await momentumRepository.getMembers(questId);
-  const today = Date.now();
 
-  const recentActorIds = new Set(events.map((e) => e.actor_id));
+  const windowEvents = allEvents.filter((e) => {
+    const t = new Date(e.created_at).getTime();
+    return t > windowStart && t <= refTime;
+  });
+
+  const recentActorIds = new Set(windowEvents.map((e) => e.actor_id));
   const activeMembers = recentActorIds.size;
 
   const actorCounts = new Map<string, number>();
@@ -164,7 +194,7 @@ async function extractEngagementSignals(questId: string) {
 
   const lastEvent = allEvents.length > 0 ? allEvents[0] : null;
   const daysSinceLastEvent = lastEvent
-    ? Math.round((today - new Date(lastEvent.created_at).getTime()) / 86400000)
+    ? Math.round((refTime - new Date(lastEvent.created_at).getTime()) / MS_PER_DAY)
     : 999;
 
   return {
@@ -195,5 +225,27 @@ export async function extractSignals(questId: string): Promise<SignalPack> {
     ownership,
     stability,
     engagement,
+  };
+}
+
+export async function extractSignalsWithPrev(questId: string): Promise<{ current: SignalPack; prev: SignalPack }> {
+  const [current, prev] = await Promise.all([
+    Promise.all([
+      extractVelocitySignals(questId),
+      extractOwnershipSignals(questId),
+      extractStabilitySignals(questId),
+      extractEngagementSignals(questId),
+    ]),
+    Promise.all([
+      extractVelocitySignals(questId, TREND_WINDOW_DAYS),
+      extractOwnershipSignals(questId, TREND_WINDOW_DAYS),
+      extractStabilitySignals(questId, TREND_WINDOW_DAYS),
+      extractEngagementSignals(questId, TREND_WINDOW_DAYS),
+    ]),
+  ]);
+
+  return {
+    current: { velocity: current[0], ownership: current[1], stability: current[2], engagement: current[3] },
+    prev: { velocity: prev[0], ownership: prev[1], stability: prev[2], engagement: prev[3] },
   };
 }

@@ -14,6 +14,8 @@ import { searchCommands } from '@/features/commands/search';
 import { executeCommand } from '@/features/commands/executor';
 import { getRecentCommandIds } from '@/features/commands/history';
 import { registerGlobalShortcut, useGlobalShortcuts } from '@/features/commands/shortcuts';
+import { FocusTrap } from '@/components/ui/focus-trap';
+import { SrOnly } from '@/components/ui/sr-only';
 
 import type { Command, CommandContext, ExecutionContext, SearchResult } from '@/features/commands/types';
 
@@ -231,6 +233,7 @@ export function CommandPalette() {
     const isSelected = index === selectedIndex;
     const baseClass = 'flex items-center gap-3 px-4 py-2.5 text-sm cursor-pointer transition-colors';
     const selectedClass = isSelected ? 'bg-surface-alt' : 'hover:bg-surface';
+    const itemId = `command-item-${index}`;
 
     if ('type' in item && item.type === 'command' && !('description' in item && 'group' in item)) {
       const cmd = item as Command;
@@ -239,11 +242,14 @@ export function CommandPalette() {
         element: (
           <div
             key={cmd.id}
+            id={itemId}
             className={`${baseClass} ${selectedClass}`}
             onClick={() => handleItemClick(index)}
             onMouseEnter={() => setSelectedIndex(index)}
+            role="option"
+            aria-selected={isSelected}
           >
-            {cmd.icon && <cmd.icon className="w-4 h-4 text-muted shrink-0" />}
+            {cmd.icon && <cmd.icon className="w-4 h-4 text-muted shrink-0" aria-hidden="true" />}
             <div className="flex-1 min-w-0">
               <div className="font-medium text-fg truncate">{cmd.title}</div>
               <div className="text-xs text-muted truncate">{cmd.description}</div>
@@ -265,9 +271,12 @@ export function CommandPalette() {
         element: (
           <div
             key={`${r.type}:${(r as any).id}`}
+            id={itemId}
             className={`${baseClass} ${selectedClass}`}
             onClick={() => handleItemClick(index)}
             onMouseEnter={() => setSelectedIndex(index)}
+            role="option"
+            aria-selected={isSelected}
           >
             <TypeIcon type={r.type} />
             <div className="flex-1 min-w-0">
@@ -287,11 +296,14 @@ export function CommandPalette() {
       element: (
         <div
           key={cmd.id}
+          id={itemId}
           className={`${baseClass} ${selectedClass}`}
           onClick={() => handleItemClick(index)}
           onMouseEnter={() => setSelectedIndex(index)}
+          role="option"
+          aria-selected={isSelected}
         >
-          {cmd.icon && <cmd.icon className="w-4 h-4 text-muted shrink-0" />}
+          {cmd.icon && <cmd.icon className="w-4 h-4 text-muted shrink-0" aria-hidden="true" />}
           <div className="flex-1 min-w-0">
             <div className="font-medium text-fg truncate">{cmd.title}</div>
             <div className="text-xs text-muted truncate">{cmd.description}</div>
@@ -320,93 +332,104 @@ export function CommandPalette() {
       aria-modal="true"
       aria-label="Command palette"
     >
-      <div className="fixed inset-0 bg-black/60" onClick={close} />
+      <div className="fixed inset-0 bg-black/60" onClick={close} aria-hidden="true" />
+      <FocusTrap active={isOpen}>
+        <div
+          ref={listRef}
+          className="relative w-full max-w-lg bg-bg border border-border rounded-xl shadow-2xl overflow-hidden"
+          onKeyDown={handleKeyDown}
+        >
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
+            <Search className="w-4 h-4 text-muted shrink-0" aria-hidden="true" />
+            <input
+              ref={inputRef}
+              type="text"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setSelectedIndex(0);
+              }}
+              placeholder="Search commands and work items..."
+              className="flex-1 bg-transparent text-sm text-fg placeholder:text-muted/50 focus:outline-none"
+              aria-label="Search commands"
+              aria-activedescendant={totalItems > 0 ? `command-item-${selectedIndex}` : undefined}
+              role="combobox"
+              aria-expanded="true"
+              aria-controls="command-results"
+              autoComplete="off"
+            />
+            {isSearching && (
+              <span className="text-xs text-muted animate-pulse" aria-live="polite">Searching...</span>
+            )}
+          </div>
 
-      <div
-        ref={listRef}
-        className="relative w-full max-w-lg bg-bg border border-border rounded-xl shadow-2xl overflow-hidden"
-        onKeyDown={handleKeyDown}
-      >
-        {/* Search input */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
-          <Search className="w-4 h-4 text-muted shrink-0" />
-          <input
-            ref={inputRef}
-            type="text"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setSelectedIndex(0);
-            }}
-            placeholder="Search commands and work items..."
-            className="flex-1 bg-transparent text-sm text-fg placeholder:text-muted/50 focus:outline-none"
-            aria-label="Search commands"
-          />
-          {isSearching && (
-            <span className="text-xs text-muted animate-pulse">Searching...</span>
-          )}
+          <SrOnly role="status" aria-live="polite">
+            {totalItems > 0
+              ? `${totalItems} result${totalItems !== 1 ? 's' : ''}. ${selectedIndex + 1} of ${totalItems} selected.`
+              : 'No results.'}
+          </SrOnly>
+
+          <div
+            id="command-results"
+            className="max-h-80 overflow-y-auto"
+            role="listbox"
+            aria-label="Results"
+          >
+            {showRecent && (
+              <div>
+                <div className="px-4 py-2 text-[10px] font-secondary uppercase tracking-widest text-muted/60">
+                  Recent
+                </div>
+                {recentCommands.map((cmd, i) => {
+                  const { element } = renderItem(cmd, i);
+                  return element;
+                })}
+              </div>
+            )}
+
+            {showCommands && (
+              <div>
+                <div className="px-4 py-2 text-[10px] font-secondary uppercase tracking-widest text-muted/60">
+                  Commands
+                </div>
+                {commandResults.map((cmdResult, i) => {
+                  const cmd = availableCommands.find((c) => c.id === cmdResult.id);
+                  if (!cmd) return null;
+                  const { element } = renderItem(cmd, i);
+                  return element;
+                })}
+              </div>
+            )}
+
+            {showResults && (
+              <div>
+                <div className="px-4 py-2 text-[10px] font-secondary uppercase tracking-widest text-muted/60">
+                  Results
+                </div>
+                {serverResults.map((result, i) => {
+                  const { element } = renderItem(
+                    result,
+                    commandResults.length + i,
+                  );
+                  return element;
+                })}
+              </div>
+            )}
+
+            {showEmpty && (
+              <div className="px-4 py-8 text-center" aria-live="polite">
+                <p className="text-sm text-muted">No matching commands or work items.</p>
+              </div>
+            )}
+
+            {!showRecent && !showCommands && !showResults && !showEmpty && (
+              <div className="px-4 py-8 text-center">
+                <p className="text-sm text-muted/40">Type to search commands and work items.</p>
+              </div>
+            )}
+          </div>
         </div>
-
-        {/* Results */}
-        <div className="max-h-80 overflow-y-auto" role="listbox">
-          {/* Recent commands */}
-          {showRecent && (
-            <div>
-              <div className="px-4 py-2 text-[10px] font-secondary uppercase tracking-widest text-muted/60">
-                Recent
-              </div>
-              {recentCommands.map((cmd, i) => {
-                const { element } = renderItem(cmd, i);
-                return element;
-              })}
-            </div>
-          )}
-
-          {/* Command results */}
-          {showCommands && (
-            <div>
-              <div className="px-4 py-2 text-[10px] font-secondary uppercase tracking-widest text-muted/60">
-                Commands
-              </div>
-              {commandResults.map((cmdResult, i) => {
-                const cmd = availableCommands.find((c) => c.id === cmdResult.id);
-                if (!cmd) return null;
-                const { element } = renderItem(cmd, i);
-                return element;
-              })}
-            </div>
-          )}
-
-          {/* Entity results */}
-          {showResults && (
-            <div>
-              <div className="px-4 py-2 text-[10px] font-secondary uppercase tracking-widest text-muted/60">
-                Results
-              </div>
-              {serverResults.map((result, i) => {
-                const { element } = renderItem(
-                  result,
-                  commandResults.length + i,
-                );
-                return element;
-              })}
-            </div>
-          )}
-
-          {/* Empty state */}
-          {showEmpty && (
-            <div className="px-4 py-8 text-center">
-              <p className="text-sm text-muted">No matching commands or work items.</p>
-            </div>
-          )}
-
-          {!showRecent && !showCommands && !showResults && !showEmpty && (
-            <div className="px-4 py-8 text-center">
-              <p className="text-sm text-muted/40">Type to search commands and work items.</p>
-            </div>
-          )}
-        </div>
-      </div>
+      </FocusTrap>
     </div>
   );
 }
@@ -415,15 +438,15 @@ function TypeIcon({ type }: { type: string }) {
   const className = 'w-4 h-4 text-muted shrink-0';
   switch (type) {
     case 'quest':
-      return <span className={`${className} text-status-healthy`}>Q</span>;
+      return <span className={`${className} text-status-healthy`} aria-hidden="true">Q</span>;
     case 'action':
-      return <span className={`${className} text-status-claimed`}>A</span>;
+      return <span className={`${className} text-status-claimed`} aria-hidden="true">A</span>;
     case 'milestone':
-      return <span className={`${className} text-status-attention`}>M</span>;
+      return <span className={`${className} text-status-attention`} aria-hidden="true">M</span>;
     case 'member':
-      return <span className={`${className} text-status-healthy`}>@</span>;
+      return <span className={`${className} text-status-healthy`} aria-hidden="true">@</span>;
     default:
-      return <span className={className}>•</span>;
+      return <span className={className} aria-hidden="true">\u2022</span>;
   }
 }
 

@@ -3,7 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { createServerClient } from '@/lib/supabase/server';
 import { getCallerMembership } from '@/lib/permissions/quest';
 import { updateMemberRoleSchema } from '@/features/members/schemas';
-import { canChangeRoles, isValidRoleTransition } from '@/lib/permissions/quest';
+import { canChangeRoles, canRemoveMember, isValidRoleTransition } from '@/lib/permissions/quest';
 import { updateMemberRoleService } from '@/features/members/services/updateRole';
 import type { MemberRole } from '@/types';
 
@@ -49,10 +49,11 @@ export async function PATCH(
     .select('id')
     .eq('clerk_user_id', clerkUserId)
     .single<{ id: string }>();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const result = await updateMemberRoleService({
     memberId,
-    actorId: user!.id,
+    actorId: user.id,
     questId,
     newRole: parsed.data.role,
   });
@@ -74,7 +75,7 @@ export async function DELETE(
   const { questId, memberId } = await params;
 
   const membership = await getCallerMembership(questId, clerkUserId);
-  if (!membership || !canChangeRoles(membership.role)) {
+  if (!membership || !canRemoveMember(membership.role)) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
@@ -96,11 +97,12 @@ export async function DELETE(
     .select('id')
     .eq('clerk_user_id', clerkUserId)
     .single<{ id: string }>();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { removeMemberService } = await import('@/features/members/services/removeMember');
   const result = await removeMemberService({
     memberId,
-    actorId: user!.id,
+    actorId: user.id,
     questId,
   });
 

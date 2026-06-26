@@ -930,3 +930,317 @@ src/app/api/search/route.ts   — Search API orchestrator
 6. **Self-determined visibility**: Each command exposes `availability()` and `visible()` to determine its own context. The palette has no hardcoded rules about which commands appear where.
 
 7. **Result grouping**: Three distinct sections (Recent, Commands, Results) prevent the "one long mixed list" antipattern. Users immediately understand what they're looking at.
+
+---
+
+## Production Hardening (Sprint 10)
+
+### Security Model
+
+Surge follows a defense-in-depth security model with four layers:
+
+| Layer | Mechanism | Scope |
+|-------|-----------|-------|
+| **Edge** | Clerk authentication, rate limiting, security headers | Every request (middleware) |
+| **Application** | Auth checks, Zod validation, role-based authorization | Every API route |
+| **Database** | Row Level Security (RLS), service role segregation | Every table |
+| **Events** | Immutable audit log, actor snapshots, idempotent keys | Every mutation |
+
+No layer is a single point of failure.
+
+### Authentication Flow
+
+```
+Request → Middleware (proxy.ts)
+  ├── Public route? → No auth check
+  ├── Protected route? → Clerk auth.protect() → Redirect to /sign-in
+  └── API route? → Rate limit check before auth
+
+API Route Handler
+  → await auth()
+  → Lookup user in users table by clerk_user_id
+  → If not found → 401
+  → Proceed with handler logic
+```
+
+**401 vs 403 vs 404:**
+- **401**: Session token valid but local user record missing
+- **404**: Returned for unauthorized quest access (prevents enumeration)
+- **422**: Invalid state transitions
+- **429**: Rate limit exceeded
+
+### Authorization Flow
+
+```
+Request → Auth (identity)
+  → Route handler checks:
+      1. Role-based permissions
+      2. Quest membership
+  → 404 if unauthorized (hides quest existence)
+  → Proceed to service layer
+```
+
+**Role hierarchy:**
+- **Owner**: Full control
+- **Admin**: Manage milestones, invites, remove members
+- **Member**: Read-only
+
+### Rate Limiting
+
+In-memory token bucket in middleware (`src/proxy.ts`).
+
+| Category | Rate | Bucket |
+|----------|------|--------|
+| Auth | 10/min | Per-IP |
+| Search | 60/min | Per-user/IP |
+| Invites | 20/min | Per-user/IP |
+| Mutations | 120/min | Per-user/IP |
+| Command | 60/min | Per-user/IP |
+| Default | 200/min | Per-user/IP |
+
+Response: 429 with `Retry-After` header, `x-request-id`, and JSON body.
+
+### Logging & Observability
+
+**Structured logging** (`src/lib/logging/logger.ts`):
+```json
+{ "timestamp": "...", "level": "info", "message": "GET /api/quests/abc → 200 (45ms)", "requestId": "uuid", "method": "GET", "path": "/api/quests/abc", "status": 200, "duration": 45 }
+```
+
+**Metrics** (`src/lib/observability/metrics.ts`):
+Vendor-agnostic observer pattern. No vendor coupling.
+
+```typescript
+emitMetric({ type: 'api_call', tags: { method, path, status }, value: duration });
+addMetricObserver((event) => { /* forward to vendor */ });
+```
+
+### Request Correlation
+
+Every request receives `x-request-id`:
+1. **Generated** in middleware via `crypto.randomUUID()`
+2. **Propagated** to API routes via request header
+3. **Stored** in domain event metadata
+4. **Logged** in every structured log line
+
+### Security Headers
+
+**Middleware:** CSP, HSTS, `x-request-id`
+
+**next.config.ts:** X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy, COOP, CORP, COEP
+
+### RLS Policy Audit
+
+All 7 tables have RLS enabled. SELECT policies restrict to quest members via Clerk JWT sub claim → users → quest_members. No INSERT/UPDATE/DELETE policies exist — mutations use service role key.
+
+### Input Validation Pipeline
+
+```
+HTTP Request → Route schema (Zod) → Service schema (Zod) → executeDomainMutation → Repository (parameterized SQL) → Database
+```
+
+### Error Handling
+
+Typed `DomainResult`: `{ success, entity?, event?, error?, code? }`
+
+HTTP status codes: 200, 201, 400, 401, 404, 409, 410, 422, 429, 500
+
+No stack traces leaked. Errors logged server-side.
+
+### Environment Validation
+
+12 required variables validated at startup via Zod schema. Process exits with clear error message on failure.
+
+### Dependency Audit
+
+13 production dependencies. No unused packages (verify `svix` usage for Clerk webhooks). No logging, rate limiting, or observability SDKs — intentional (custom implementations, vendor-agnostic pattern).
+
+### Deployment Considerations
+
+- Next.js 16 on Vercel (recommended)
+- PostgreSQL via Supabase
+- Clerk for auth
+- 12 env vars required
+- Scale: pg pool 2 → 10-20, rate limiting in-memory → Redis, logging console → log shipper
+
+---
+
+## Testing Strategy
+
+### Unit Tests (Vitest)
+
+The project uses **Vitest** for deterministic, fast unit tests. Tests are in `tests/` and mirror the source structure.
+
+| Module | File | Coverage |
+|--------|------|----------|
+| Rate limiter | `tests/rate-limit/tokenBucket.test.ts` | TokenBucket refill, consume, stale, TTL; RateLimiter isolation, cleanup, SSR safety |
+| Rate limit config | `tests/rate-limit/rates.test.ts` | Category routing, key building, config integrity |
+| Logger | `tests/logging/logger.test.ts` | Level filtering, JSON format, output routing, request logger levels and formatting |
+| Environment | `tests/env.test.ts` | Valid/invalid/missing vars, defaults, coercion, caching |
+| Request correlation | `tests/request/correlation.test.ts` | UUID generation, header extraction, fallback |
+| Metrics/observability | `tests/observability/metrics.test.ts` | Observer notifications, unsubscribe, error suppression, convenience trackers |
+| Search ranking | `tests/commands/search.test.ts` | Scoring tiers (exact, prefix, keyword, fuzzy, substring), case insensitivity, boostRecent |
+| Command registry | `tests/commands/registry.test.ts` | Provider registration, deduplication, availability/visibility filters |
+| Command definition | `tests/commands/define.test.ts` | Keyword inference, defaults, custom functions |
+| Momentum weights | `tests/momentum/weights.test.ts` | Default constants, weight merging, trend calculation with thresholds |
+| Momentum calculator | `tests/momentum/calculator.test.ts` | Weighted average, custom weights, trend computation, zero-weight edge case |
+| Momentum summary | `tests/momentum/summary.test.ts` | Status (healthy/attention/critical), attention level, highlights generation |
+| Momentum recommendations | `tests/momentum/recommendations.test.ts` | All 8 recommendation triggers with edge cases |
+
+**Run:** `npm test` (CI) or `npm run test:watch` (development).
+
+**Pattern:** Tests use `vi.resetModules()` + dynamic `import()` where modules have mutable module-level state (logger, registry, metrics, env). Time-dependent code uses `vi.useFakeTimers()`.
+
+### Integration Scripts (End-to-End)
+
+Two standalone scripts verify real Supabase connectivity:
+
+- `scripts/test-momentum.ts` — Momentum Engine integration (requires live DB)
+- `scripts/test-realtime.mjs` — Realtime event system (requires live Supabase + Realtime)
+
+Run manually: `npx tsx scripts/test-momentum.ts` / `node scripts/test-realtime.mjs`
+
+---
+
+## Production Polish (Sprint 11)
+
+### Accessibility Philosophy
+
+Surge prioritizes semantic HTML and keyboard operability over decorative patterns.
+
+**Principles:**
+- All interactive elements must be keyboard accessible
+- Visual focus indicators use `:focus-visible` (visible on keyboard focus, hidden on mouse click)
+- ARIA roles describe structure, not style
+- Icons are `aria-hidden="true"` with text alternatives via `SrOnly` component
+- Dialog modals implement focus trapping via `FocusTrap` component
+- Loading states announce via `aria-live="polite"`
+- Error boundaries use `role="alert"` for screen reader announcement
+
+### Keyboard Interaction Model
+
+| Component | Shortcut | Behavior |
+|-----------|----------|----------|
+| Command Palette | `Cmd+K` | Toggle open/close, type to search |
+| Shortcuts Overlay | `?` | Display all keyboard shortcuts |
+| Dialogs | `Escape` | Close dialog, restore focus |
+| Journey Board | `Enter` | Submit inline forms (milestones, actions) |
+| Navigation | Arrow keys | Navigate command palette results |
+
+All shortcuts are registered via `registerGlobalShortcut(key, handler, metaKey)` in `src/features/commands/shortcuts.ts`. The `?` overlay groups shortcuts by: Navigation, Actions, Command Palette, Mission Control, General.
+
+### Motion Principles
+
+**Rules:**
+- Motion communicates state changes only
+- No decorative or infinite animations
+- Timing: 150ms-400ms (micro-interactions at 150ms, views at 300ms)
+- CSS transitions only (`transition-colors`, `transition-opacity`) — no Framer Motion
+- Loading skeletons use `animate-pulse` (pulse, not spin)
+- Syncing indicator uses `animate-spin` only during active sync
+
+**Allowed:**
+- `transition-colors` for interactive elements (hover, focus)
+- `transition-opacity` for hover-revealed controls (journey board action buttons)
+- `opacity-0 → opacity-100` for toast enter/exit
+- `translate-x-4 → translate-x-0` for toast slide-in
+- `animate-pulse` for skeleton loading
+- `opacity-60` for syncing items
+
+**Forbidden:**
+- Floating blobs, parallax, rotating backgrounds
+- Bounce or elastic effects
+- Infinite keyframe animations
+
+### Loading Strategy
+
+**Skeletons over spinners:** Every page has a dedicated `loading.tsx` matching its content structure to prevent layout shift.
+
+| Page | Skeleton |
+|------|----------|
+| `/quests` | Header + featured card + 3 list items |
+| `/quests/[questId]` | Title + badges + description + card |
+| `/quests/[questId]/mission-control` | Pill + summary + score + 4 pillar cards |
+
+**Inline loading:** API mutations use `actionLoading` state tracking (string key per operation). Buttons show descriptive text (`Creating...`, `Saving...`, `Adding...`) instead of `"..."` during loading.
+
+**Optimistic updates:** Journey board applies changes immediately and rolls back on failure. Syncing state shown via `opacity-60` and `SyncingIndicator` on affected items.
+
+### Deployment Architecture
+
+```
+┌─────────────────────────────────────────────────┐
+│                     Vercel                        │
+│  ┌───────────────────────────────────────────┐  │
+│  │            Next.js 16 (App Router)          │  │
+│  │  ┌──────┐  ┌──────┐  ┌──────────────────┐ │  │
+│  │  │Pages │  │ API  │  │ Middleware (Edge) │ │  │
+│  │  └──────┘  └──────┘  └──────────────────┘ │  │
+│  └───────────────────────────────────────────┘  │
+│                                                  │
+│  ┌───────────────────────────────────────────┐  │
+│  │            Clerk (Auth)                     │  │
+│  │  ┌──────────┐  ┌────────────────────┐     │  │
+│  │  │Frontend  │  │ Backend API        │     │  │
+│  │  │(React)  │  │ (Node.js)          │     │  │
+│  │  └──────────┘  └────────────────────┘     │  │
+│  └───────────────────────────────────────────┘  │
+│                                                  │
+│  ┌───────────────────────────────────────────┐  │
+│  │            Supabase                         │  │
+│  │  ┌──────┐  ┌────────┐  ┌──────────────┐  │  │
+│  │  │Post- │  │Realtime│  │Storage/Auth  │  │  │
+│  │  │greSQL│  │(WSS)  │  │(optional)    │  │  │
+│  │  └──────┘  └────────┘  └──────────────┘  │  │
+│  └───────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────┘
+```
+
+**Key characteristics:**
+- Single Next.js deployment on Vercel (Edge + Serverless)
+- Clerk handles authentication (frontend SDK + backend API)
+- Supabase provides PostgreSQL + Realtime WebSocket
+- Middleware runs on Vercel Edge for rate limiting + auth checks
+- API routes run as Serverless Functions
+
+### Environment Variables
+
+| Variable | Required | Source | Notes |
+|----------|----------|--------|-------|
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Yes | Clerk Dashboard | Frontend, starts with `pk_` |
+| `CLERK_SECRET_KEY` | Yes | Clerk Dashboard | Backend, starts with `sk_` |
+| `CLERK_WEBHOOK_SECRET` | Yes | Clerk Dashboard | Webhook signing secret |
+| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase Dashboard | Project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase Dashboard | Client-side API key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Supabase Dashboard | Server-side (bypasses RLS) |
+| `SUPABASE_DB_HOST` | Yes | Supabase Dashboard | Pooler host |
+| `SUPABASE_DB_PORT` | No (default 6543) | Supabase Dashboard | Transaction pooler port |
+| `SUPABASE_DB_NAME` | Yes | Supabase Dashboard | Database name |
+| `SUPABASE_DB_USER` | Yes | Supabase Dashboard | Database user |
+| `SUPABASE_DB_PASSWORD` | Yes | Supabase Dashboard | Database password |
+| `NODE_ENV` | No (default development) | — | `development`, `production`, `test` |
+| `LOG_LEVEL` | No (default info) | — | `debug`, `info`, `warn`, `error` |
+
+### Deployment Checklist
+
+- [ ] All 12 required env vars configured in Vercel project
+- [ ] Clerk production keys vs staging keys verified
+- [ ] Supabase project connected and accessible
+- [ ] Realtime enabled on Supabase project
+- [ ] HTTPS enforced (Vercel default)
+- [ ] Security headers verified (CSP, HSTS, etc.)
+- [ ] Clerk redirect URLs configured (sign-in, sign-up, callback)
+- [ ] Webhook endpoint configured in Clerk Dashboard
+- [ ] Build succeeds with 0 errors
+- [ ] Tests pass (`npm test`)
+- [ ] Rate limiting verified (429 responses with Retry-After)
+- [ ] Auth flow verified (sign-in, sign-up, session persistence)
+- [ ] Quest CRUD verified
+- [ ] Invite flow verified
+- [ ] Realtime verified (presence, optimistic updates)
+- [ ] Mission Control loads with momentum data
+- [ ] Command Palette works (Cmd+K, search, navigation)
+- [ ] Responsive layouts verified (desktop, tablet, mobile)
+- [ ] Cross-browser verified (Chrome, Firefox, Safari)
+- [ ] Cold start performance acceptable
+- [ ] No localhost-only assumptions remain

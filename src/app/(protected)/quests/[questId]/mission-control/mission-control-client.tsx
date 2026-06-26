@@ -5,12 +5,12 @@ import { Badge } from '@/components/ui/badge';
 
 function TrendIcon({ direction, delta }: { direction: string; delta: number }) {
   if (direction === 'up') {
-    return <span className="text-status-healthy" title={`+${delta}`}>↑</span>;
+    return <span className="text-status-healthy" aria-label={`Improved by ${delta} points`}>\u2191</span>;
   }
   if (direction === 'down') {
-    return <span className="text-status-critical" title={`${delta}`}>↓</span>;
+    return <span className="text-status-critical" aria-label={`Declined by ${Math.abs(delta)} points`}>\u2193</span>;
   }
-  return <span className="text-muted">→</span>;
+  return <span className="text-muted" aria-label="Stable">\u2192</span>;
 }
 
 function StatusDot({ status }: { status: string }) {
@@ -20,7 +20,7 @@ function StatusDot({ status }: { status: string }) {
     critical: 'bg-status-critical',
   };
   return (
-    <span className={`inline-block w-2.5 h-2.5 rounded-full ${colors[status] ?? 'bg-muted'}`} />
+    <span className={`inline-block w-2.5 h-2.5 rounded-full ${colors[status] ?? 'bg-muted'}`} aria-hidden="true" />
   );
 }
 
@@ -153,8 +153,8 @@ export function MissionControlClient({ data }: { data: MomentumResponse }) {
 }
 
 function HighlightBadge({ h }: { h: ExecutionHighlight }) {
-  const icon = h.type === 'positive' ? <span className="text-[10px]">✓</span>
-    : <span className="text-[10px]">⚠</span>;
+  const icon = h.type === 'positive' ? <span className="text-[10px]" aria-hidden="true">\u2713</span>
+    : <span className="text-[10px]" aria-hidden="true">\u26A0</span>;
   return (
     <Badge variant="status" color={h.type === 'positive' ? 'healthy' : 'attention'}>
       {icon}

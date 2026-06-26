@@ -2,6 +2,7 @@
 
 import { UserButton } from '@clerk/nextjs';
 import { useCallback, useEffect, useState } from 'react';
+import { Moon, Sun } from 'lucide-react';
 
 function getInitialTheme(): 'dark' | 'light' {
   if (typeof window === 'undefined') return 'dark';
@@ -27,10 +28,14 @@ export function SidebarClient() {
     <div className="flex items-center gap-2">
       <button
         onClick={toggle}
-        className="text-muted hover:text-fg transition-colors text-sm"
+        className="text-muted hover:text-fg transition-colors"
         aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
       >
-        {theme === 'dark' ? '\u2600' : '\u263E'}
+        {theme === 'dark' ? (
+          <Sun className="w-4 h-4" aria-hidden="true" />
+        ) : (
+          <Moon className="w-4 h-4" aria-hidden="true" />
+        )}
       </button>
       <UserButton
         appearance={{

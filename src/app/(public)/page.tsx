@@ -13,13 +13,13 @@ export default async function LandingPage() {
     <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-bg">
       <div className="max-w-2xl text-center space-y-8">
         <h1 className="text-4xl sm:text-5xl md:text-6xl font-medium leading-tight tracking-tight text-fg">
-          Stop managing projects.
+          Ship with momentum.
           <br />
-          <span className="text-muted">Start shipping them.</span>
+          <span className="text-muted">Not project management debt.</span>
         </h1>
 
         <p className="text-lg sm:text-xl text-muted leading-relaxed max-w-lg mx-auto">
-          A realtime workspace built to maintain momentum, ownership, and execution.
+          A realtime workspace for execution. Track milestones, own actions, and maintain team momentum without the overhead.
         </p>
 
         <div className="flex items-center justify-center gap-4 pt-4">

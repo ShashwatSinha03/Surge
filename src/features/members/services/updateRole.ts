@@ -1,12 +1,17 @@
+import { z } from 'zod';
 import { executeDomainMutation, makeEventKey } from '@/lib/events/executeDomainMutation';
 import { memberRepository } from '../repositories/memberRepository';
+import { validate, uuid, entityId, questId } from '@/lib/validation/service-input';
 
-export async function updateMemberRoleService(input: {
-  memberId: string;
-  actorId: string;
-  questId: string;
-  newRole: string;
-}) {
+const schema = z.object({
+  memberId: entityId,
+  actorId: uuid,
+  questId,
+  newRole: z.string().min(1),
+});
+
+export async function updateMemberRoleService(input: z.infer<typeof schema>) {
+  validate(schema, input, 'updateMemberRoleService');
   return executeDomainMutation({
     mutation: async (query) => {
       const target = await memberRepository.findById(query, input.memberId);

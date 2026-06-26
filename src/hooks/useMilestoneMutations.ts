@@ -43,13 +43,15 @@ export function useMilestoneMutations(
     };
   }, [questId, actorId]);
 
-  const snapshot = useCallback(() => {
-    snapshotsRef.current.set('current', [...milestones]);
+  const snapshot = useCallback((key?: string) => {
+    const k = key ?? 'default';
+    snapshotsRef.current.set(k, [...milestones]);
     return [...milestones];
   }, [milestones]);
 
-  const rollbackToSnapshot = useCallback(() => {
-    const saved = snapshotsRef.current.get('current');
+  const rollbackToSnapshot = useCallback((key?: string) => {
+    const k = key ?? 'default';
+    const saved = snapshotsRef.current.get(k);
     if (saved) setMilestones(saved);
   }, []);
 
@@ -67,7 +69,7 @@ export function useMilestoneMutations(
   }, []);
 
   const createMilestone = useCallback(async (title: string) => {
-    const saved = snapshot();
+    const saved = snapshot('createMilestone');
     const tempId = `temp-ms-${Date.now()}`;
     const optimistic: MilestoneWithSync = {
       id: tempId,
@@ -102,7 +104,8 @@ export function useMilestoneMutations(
   }, [questId, actorId, milestones, snapshot, apiCall, router]);
 
   const deleteMilestone = useCallback(async (milestoneId: string) => {
-    const saved = snapshot();
+    const key = `deleteMilestone:${milestoneId}`;
+    const saved = snapshot(key);
     setMilestones((prev) => prev.map((ms) =>
       ms.id === milestoneId ? { ...ms, _syncing: true } : ms
     ));
@@ -118,7 +121,7 @@ export function useMilestoneMutations(
         const data = await res.json();
         if (res.status === 409) {
           if (!confirm(`${data.actions_remaining} action(s) remain. Delete anyway?`)) {
-            rollbackToSnapshot();
+            rollbackToSnapshot(key);
             connectionState.endSync();
             return;
           }
@@ -137,7 +140,7 @@ export function useMilestoneMutations(
   }, [snapshot, apiCall, router, rollbackToSnapshot]);
 
   const updateMilestone = useCallback(async (milestoneId: string, title: string) => {
-    const saved = snapshot();
+    const saved = snapshot(`updateMilestone:${milestoneId}`);
     setMilestones((prev) => prev.map((ms) =>
       ms.id === milestoneId ? { ...ms, title, _syncing: true } : ms
     ));
@@ -157,7 +160,7 @@ export function useMilestoneMutations(
   }, [snapshot, apiCall, router]);
 
   const createAction = useCallback(async (milestoneId: string, title: string, description?: string) => {
-    const saved = snapshot();
+    const saved = snapshot(`createAction:${milestoneId}`);
     const tempId = `temp-action-${Date.now()}`;
     const optimistic: ActionWithSync = {
       id: tempId,
@@ -213,7 +216,7 @@ export function useMilestoneMutations(
   }, [questId, actorId, snapshot, apiCall, router]);
 
   const updateAction = useCallback(async (actionId: string, title: string, description: string | null) => {
-    const saved = snapshot();
+    const saved = snapshot(`updateAction:${actionId}`);
     setMilestones((prev) =>
       prev.map((ms) => ({
         ...ms,
@@ -246,7 +249,7 @@ export function useMilestoneMutations(
   }, [snapshot, apiCall, router]);
 
   const claimAction = useCallback(async (actionId: string, userId: string) => {
-    const saved = snapshot();
+    const saved = snapshot(`claimAction:${actionId}`);
     setMilestones((prev) =>
       prev.map((ms) => ({
         ...ms,
@@ -278,7 +281,7 @@ export function useMilestoneMutations(
   }, [snapshot, apiCall, router]);
 
   const unclaimAction = useCallback(async (actionId: string) => {
-    const saved = snapshot();
+    const saved = snapshot(`unclaimAction:${actionId}`);
     setMilestones((prev) =>
       prev.map((ms) => ({
         ...ms,
@@ -308,7 +311,7 @@ export function useMilestoneMutations(
   }, [snapshot, apiCall, router]);
 
   const completeAction = useCallback(async (actionId: string) => {
-    const saved = snapshot();
+    const saved = snapshot(`completeAction:${actionId}`);
     setMilestones((prev) =>
       prev.map((ms) => ({
         ...ms,
@@ -338,7 +341,7 @@ export function useMilestoneMutations(
   }, [snapshot, apiCall, router]);
 
   const blockAction = useCallback(async (actionId: string) => {
-    const saved = snapshot();
+    const saved = snapshot(`blockAction:${actionId}`);
     setMilestones((prev) =>
       prev.map((ms) => ({
         ...ms,
@@ -368,7 +371,7 @@ export function useMilestoneMutations(
   }, [snapshot, apiCall, router]);
 
   const deleteAction = useCallback(async (actionId: string) => {
-    const saved = snapshot();
+    const saved = snapshot(`deleteAction:${actionId}`);
     setMilestones((prev) =>
       prev.map((ms) => ({
         ...ms,

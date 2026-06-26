@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createServerClient } from '@/lib/supabase/server';
-import { extractSignals } from '@/features/momentum/signals';
+import { extractSignalsWithPrev } from '@/features/momentum/signals';
 import { analyzeBehavior } from '@/features/momentum/behavior';
 import { evaluatePillars } from '@/features/momentum/pillars';
 import { calculateMomentum } from '@/features/momentum/calculator';
@@ -44,9 +44,9 @@ export async function GET(
   }
 
   try {
-    const signals = await extractSignals(questId);
+    const { current: signals, prev: prevSignals } = await extractSignalsWithPrev(questId);
     const behavior = await analyzeBehavior(signals);
-    const pillars = evaluatePillars(signals, behavior);
+    const pillars = evaluatePillars(signals, behavior, prevSignals);
     const momentum = calculateMomentum(pillars);
     const recommendations = generateRecommendations(signals, behavior);
     const mission = generateMissionSummary(momentum.overall, pillars);

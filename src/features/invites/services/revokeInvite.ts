@@ -1,11 +1,16 @@
+import { z } from 'zod';
 import { executeDomainMutation, makeEventKey } from '@/lib/events/executeDomainMutation';
 import { inviteRepository } from '../repositories/inviteRepository';
+import { validate, uuid, entityId, questId } from '@/lib/validation/service-input';
 
-export async function revokeInviteService(input: {
-  inviteId: string;
-  actorId: string;
-  questId: string;
-}) {
+const schema = z.object({
+  inviteId: entityId,
+  actorId: uuid,
+  questId,
+});
+
+export async function revokeInviteService(input: z.infer<typeof schema>) {
+  validate(schema, input, 'revokeInviteService');
   return executeDomainMutation({
     mutation: async (query) => {
       const invite = await inviteRepository.findById(query, input.inviteId);
@@ -21,8 +26,8 @@ export async function revokeInviteService(input: {
       actorId: input.actorId,
       entityType: 'INVITE',
       entityId: input.inviteId,
-      eventType: 'MEMBER_INVITED',
+      eventType: 'INVITE_REVOKED',
     },
-    eventKey: makeEventKey('MEMBER_INVITED', input.inviteId),
+    eventKey: makeEventKey('INVITE_REVOKED', input.inviteId),
   });
 }

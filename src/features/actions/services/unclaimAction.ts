@@ -1,15 +1,20 @@
+import { z } from 'zod';
 import { executeDomainMutation, makeEventKey } from '@/lib/events/executeDomainMutation';
 import { actionRepository } from '../repositories/actionRepository';
 import { milestoneRepository } from '@/features/milestones/repositories/milestoneRepository';
 import { calculateMilestoneStatus } from '@/lib/execution/state-machine';
+import { validate, uuid, entityId, questId } from '@/lib/validation/service-input';
 
-export async function unclaimActionService(input: {
-  actionId: string;
-  actorId: string;
-  questId: string;
-  milestoneId: string;
-  isAuthorized: boolean;
-}) {
+const schema = z.object({
+  actionId: entityId,
+  actorId: uuid,
+  questId,
+  milestoneId: entityId,
+  isAuthorized: z.boolean(),
+});
+
+export async function unclaimActionService(input: z.infer<typeof schema>) {
+  validate(schema, input, 'unclaimActionService');
   return executeDomainMutation({
     mutation: async (query) => {
       const action = await actionRepository.findById(query, input.actionId);

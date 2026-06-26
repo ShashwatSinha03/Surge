@@ -2,7 +2,7 @@ import type { QueryExecutor } from '@/lib/db/transaction';
 
 export const actionRepository = {
   async findById(query: QueryExecutor, id: string) {
-    const { rows } = await query('SELECT * FROM actions WHERE id = $1', [id]);
+    const { rows } = await query('SELECT * FROM actions WHERE id = $1 FOR UPDATE', [id]);
     return rows[0] ?? null;
   },
 

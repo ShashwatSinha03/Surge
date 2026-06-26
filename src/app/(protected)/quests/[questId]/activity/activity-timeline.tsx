@@ -232,12 +232,12 @@ export function ActivityTimeline({
 
   if (entries.length === 0 && !loading) {
     return (
-      <div className="rounded-xl bg-surface border border-border p-12 text-center">
+      <div className="rounded-xl bg-surface border border-border p-12 text-center" aria-live="polite">
         <p className="text-muted text-sm font-secondary tracking-wider uppercase">
-          Nothing has happened yet.
+          No activity yet
         </p>
-        <p className="text-muted/60 text-xs mt-2">
-          Every milestone, action and collaboration will appear here.
+        <p className="text-muted/60 text-xs mt-2 leading-relaxed max-w-sm mx-auto">
+          Activity from every milestone update, action claim, and team event will appear here as your quest progresses.
         </p>
       </div>
     );

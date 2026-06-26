@@ -33,10 +33,8 @@ export async function POST(req: NextRequest) {
 
   if (!result.success) {
     const status =
-      result.error.includes('already') ? 410 :
-      result.error.includes('expired') ? 410 :
-      result.error.includes('revoked') ? 410 :
-      result.error.includes('Invalid') ? 404 : 500;
+      result.code === 'INVITE_ALREADY_ACCEPTED' || result.code === 'INVITE_EXPIRED' || result.code === 'INVITE_REVOKED' ? 410 :
+      result.code === 'INVALID_INVITE' ? 404 : 500;
     return NextResponse.json({ error: result.error }, { status });
   }
 

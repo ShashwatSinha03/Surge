@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import localFont from 'next/font/local';
 import { ClerkProvider, Show, SignInButton, SignUpButton, UserButton } from '@clerk/nextjs';
+import { ToastProvider } from '@/components/ui/toast';
 import './globals.css';
 
 const ranade = localFont({
@@ -70,7 +71,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               />
             </Show>
           </header>
-          {children}
+          <ToastProvider>
+            {children}
+          </ToastProvider>
         </ClerkProvider>
       </body>
     </html>

@@ -30,15 +30,16 @@ export async function POST(req: NextRequest) {
     .select('id')
     .eq('clerk_user_id', clerkUserId)
     .single<{ id: string }>();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const result = await createInviteService({
     quest_id,
     email: email ?? null,
-    actorId: user!.id,
+    actorId: user.id,
   });
 
   if (!result.success) {
-    if (result.error.includes('already exists')) {
+    if (result.code === 'DUPLICATE_INVITE') {
       return NextResponse.json({ error: result.error }, { status: 409 });
     }
     return NextResponse.json({ error: result.error }, { status: 500 });

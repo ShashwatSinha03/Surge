@@ -55,7 +55,7 @@ function evaluateVelocity(signals: SignalPack['velocity'], behavior: BehaviorAss
   };
 }
 
-function evaluateOwnership(signals: SignalPack['ownership'], behavior: BehaviorAssessment['ownership']): PillarEvaluation {
+function evaluateOwnership(signals: SignalPack['ownership'], behavior: BehaviorAssessment['ownership'], prevSignals?: SignalPack['ownership']): PillarEvaluation {
   const { claimedActions, unclaimedRatio, ownerDistribution, orphanedWork } = signals;
 
   const claimScore = 100 - unclaimedRatio;
@@ -63,7 +63,7 @@ function evaluateOwnership(signals: SignalPack['ownership'], behavior: BehaviorA
   const concPenalty = ownerDistribution.concentration > 2 ? Math.min(15, (ownerDistribution.concentration - 2) * 5) : 0;
   const orphanPenalty = Math.min(20, orphanedWork.count * 5);
 
-  const score = clamp(claimScore * 0.6 + distScore - concPenalty - orphanPenalty);
+  const score = clamp(claimScore * 0.8 + distScore - concPenalty - orphanPenalty);
 
   const strengths: string[] = [];
   const weaknesses: string[] = [];
@@ -90,12 +90,20 @@ function evaluateOwnership(signals: SignalPack['ownership'], behavior: BehaviorA
       ? 'Some actions need clearer ownership.'
       : 'Ownership needs significant improvement.';
 
-  const trend: TrendDelta = computeTrend(score, score);
+  let prevScore = score;
+  if (prevSignals) {
+    const prevClaimScore = 100 - prevSignals.unclaimedRatio;
+    const prevDistScore = prevSignals.ownerDistribution.uniqueOwners >= 2 ? 20 : prevSignals.ownerDistribution.uniqueOwners === 1 ? 5 : 0;
+    const prevConcPenalty = prevSignals.ownerDistribution.concentration > 2 ? Math.min(15, (prevSignals.ownerDistribution.concentration - 2) * 5) : 0;
+    const prevOrphanPenalty = Math.min(20, prevSignals.orphanedWork.count * 5);
+    prevScore = clamp(prevClaimScore * 0.8 + prevDistScore - prevConcPenalty - prevOrphanPenalty);
+  }
+  const trend: TrendDelta = computeTrend(score, prevScore);
 
   return { score, summary, strengths, weaknesses, signals: { claimedActions, unclaimedRatio, ownerDistribution, orphanedWork: orphanedWork.count }, trend };
 }
 
-function evaluateStability(signals: SignalPack['stability'], behavior: BehaviorAssessment['stability']): PillarEvaluation {
+function evaluateStability(signals: SignalPack['stability'], behavior: BehaviorAssessment['stability'], prevSignals?: SignalPack['stability']): PillarEvaluation {
   const { blockedActions, staleMilestones, longRunningActions } = signals;
 
   const blockPenalty = Math.min(35, blockedActions.count * 12);
@@ -125,12 +133,19 @@ function evaluateStability(signals: SignalPack['stability'], behavior: BehaviorA
       ? 'Some instability needs attention.'
       : 'Multiple stability issues require intervention.';
 
-  const trend: TrendDelta = computeTrend(score, score);
+  let prevScore = score;
+  if (prevSignals) {
+    const prevBlockPenalty = Math.min(35, prevSignals.blockedActions.count * 12);
+    const prevStalePenalty = Math.min(30, prevSignals.staleMilestones.count * 15);
+    const prevLongRunningPenalty = Math.min(20, prevSignals.longRunningActions.count * 5);
+    prevScore = clamp(100 - prevBlockPenalty - prevStalePenalty - prevLongRunningPenalty);
+  }
+  const trend: TrendDelta = computeTrend(score, prevScore);
 
   return { score, summary, strengths, weaknesses, signals: { blockedActions: blockedActions.count, staleMilestones: staleMilestones.count, longRunningActions: longRunningActions.count, health: behavior.health }, trend };
 }
 
-function evaluateEngagement(signals: SignalPack['engagement'], behavior: BehaviorAssessment['engagement']): PillarEvaluation {
+function evaluateEngagement(signals: SignalPack['engagement'], behavior: BehaviorAssessment['engagement'], prevSignals?: SignalPack['engagement']): PillarEvaluation {
   const { activeMembers, participation, recency, rawEventCount } = signals;
 
   const partRate = participation.totalMembers > 0 ? activeMembers / participation.totalMembers : 0;
@@ -164,7 +179,18 @@ function evaluateEngagement(signals: SignalPack['engagement'], behavior: Behavio
       ? 'Team engagement is moderate.'
       : 'Team engagement needs attention.';
 
-  const trend: TrendDelta = computeTrend(score, score);
+  let prevScore = score;
+  if (prevSignals) {
+    const prevPartRate = prevSignals.participation.totalMembers > 0 ? prevSignals.activeMembers / prevSignals.participation.totalMembers : 0;
+    const prevPartScore = Math.round(prevPartRate * 40);
+    const prevRecencyScore = prevSignals.recency.daysSinceLastEvent <= 3 ? 30
+      : prevSignals.recency.daysSinceLastEvent <= 7 ? 20
+        : prevSignals.recency.daysSinceLastEvent <= 14 ? 10 : 0;
+    const prevVolumeScore = Math.min(20, Math.round(prevSignals.rawEventCount / 3));
+    const prevEvennessBonus = Math.round(prevSignals.participation.evenness * 10);
+    prevScore = clamp(prevPartScore + prevRecencyScore + prevVolumeScore + prevEvennessBonus);
+  }
+  const trend: TrendDelta = computeTrend(score, prevScore);
 
   return { score, summary, strengths, weaknesses, signals: { activeMembers, totalMembers: participation.totalMembers, daysSinceLastEvent: recency.daysSinceLastEvent, evenness: participation.evenness }, trend };
 }
@@ -172,8 +198,8 @@ function evaluateEngagement(signals: SignalPack['engagement'], behavior: Behavio
 export function evaluatePillars(signals: SignalPack, behavior: BehaviorAssessment, prevSignals?: SignalPack): Record<string, PillarEvaluation> {
   return {
     velocity: evaluateVelocity(signals.velocity, behavior.velocity, prevSignals?.velocity),
-    ownership: evaluateOwnership(signals.ownership, behavior.ownership),
-    stability: evaluateStability(signals.stability, behavior.stability),
-    engagement: evaluateEngagement(signals.engagement, behavior.engagement),
+    ownership: evaluateOwnership(signals.ownership, behavior.ownership, prevSignals?.ownership),
+    stability: evaluateStability(signals.stability, behavior.stability, prevSignals?.stability),
+    engagement: evaluateEngagement(signals.engagement, behavior.engagement, prevSignals?.engagement),
   };
 }

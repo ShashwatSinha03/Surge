@@ -33,10 +33,11 @@ export async function DELETE(
     .select('id')
     .eq('clerk_user_id', clerkUserId)
     .single<{ id: string }>();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const result = await revokeInviteService({
     inviteId,
-    actorId: user!.id,
+    actorId: user.id,
     questId: invite.quest_id,
   });
 

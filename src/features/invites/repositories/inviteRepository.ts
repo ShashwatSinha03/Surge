@@ -2,12 +2,12 @@ import type { QueryExecutor } from '@/lib/db/transaction';
 
 export const inviteRepository = {
   async findById(query: QueryExecutor, id: string) {
-    const { rows } = await query('SELECT * FROM invites WHERE id = $1', [id]);
+    const { rows } = await query('SELECT * FROM invites WHERE id = $1 FOR UPDATE', [id]);
     return rows[0] ?? null;
   },
 
   async findByTokenHash(query: QueryExecutor, tokenHash: string) {
-    const { rows } = await query('SELECT * FROM invites WHERE token_hash = $1', [tokenHash]);
+    const { rows } = await query('SELECT * FROM invites WHERE token_hash = $1 FOR UPDATE', [tokenHash]);
     return rows[0] ?? null;
   },
 

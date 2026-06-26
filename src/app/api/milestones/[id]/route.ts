@@ -65,10 +65,11 @@ export async function PATCH(
     .select('id')
     .eq('clerk_user_id', clerkUserId)
     .single<{ id: string }>();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const result = await updateMilestoneService({
     milestoneId: id,
-    actorId: user!.id,
+    actorId: user.id,
     questId: milestone.quest_id,
     title: parsed.data.title,
     position: parsed.data.position,
@@ -117,17 +118,18 @@ export async function DELETE(
     .select('id')
     .eq('clerk_user_id', clerkUserId)
     .single<{ id: string }>();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const result = await deleteMilestoneService({
     milestoneId: id,
-    actorId: user!.id,
+    actorId: user.id,
     questId: milestone.quest_id,
     force,
   });
 
   if (!result.success) {
-    if (result.error.includes('action(s)')) {
-      const count = parseInt(result.error.match(/\d+/)?.[0] ?? '0', 10);
+    if (result.code === 'ACTIONS_REMAINING') {
+      const count = parseInt((result.error.match(/\d+/)?.[0] ?? '0'), 10);
       return NextResponse.json(
         { error: result.error, actions_remaining: count },
         { status: 409 }
