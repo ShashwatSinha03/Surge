@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import localFont from 'next/font/local';
-import { ClerkProvider, Show, SignInButton, SignUpButton, UserButton } from '@clerk/nextjs';
+import { ClerkProvider } from '@clerk/nextjs';
 import { ToastProvider } from '@/components/ui/toast';
 import './globals.css';
 
@@ -30,9 +30,16 @@ const chillax = localFont({
 });
 
 export const metadata: Metadata = {
-  title: 'Surge',
+  title: { default: 'Surge', template: '%s — Surge' },
   description:
-    'A realtime workspace built to maintain momentum, ownership, and execution.',
+    'A realtime workspace for execution. Track milestones, own actions, and maintain team momentum without the overhead.',
+  icons: { icon: '/icon.svg' },
+  openGraph: {
+    title: 'Surge',
+    description:
+      'A realtime workspace for execution. Track milestones, own actions, and maintain team momentum without the overhead.',
+    type: 'website',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -48,29 +55,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           signInFallbackRedirectUrl="/quests"
           signUpFallbackRedirectUrl="/quests"
         >
-          <header className="fixed top-0 right-0 z-50 p-4 flex items-center gap-3">
-            <Show when="signed-out">
-              <SignInButton mode="modal">
-                <button className="px-4 py-2 rounded-lg border border-border text-sm text-fg hover:bg-surface transition-colors">
-                  Sign In
-                </button>
-              </SignInButton>
-              <SignUpButton mode="modal">
-                <button className="px-4 py-2 rounded-lg bg-accent text-accent-fg text-sm font-medium hover:opacity-90 transition-opacity">
-                  Sign Up
-                </button>
-              </SignUpButton>
-            </Show>
-            <Show when="signed-in">
-              <UserButton
-                appearance={{
-                  elements: {
-                    avatarBox: 'w-8 h-8',
-                  },
-                }}
-              />
-            </Show>
-          </header>
           <ToastProvider>
             {children}
           </ToastProvider>

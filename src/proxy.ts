@@ -14,16 +14,12 @@ const isProtectedRoute = createRouteMatcher([
 
 export default clerkMiddleware(async (auth, req) => {
   const requestId = generateRequestId();
-  const requestHeaders = new Headers(req.headers);
-  requestHeaders.set(REQUEST_ID_HEADER, requestId);
 
   if (isProtectedRoute(req)) {
     await auth.protect();
   }
 
-  const response = NextResponse.next({
-    request: { headers: requestHeaders },
-  });
+  const response = NextResponse.next();
 
   response.headers.set(REQUEST_ID_HEADER, requestId);
   applySecurityHeaders(response.headers, false);

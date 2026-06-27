@@ -1,37 +1,88 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Surge
 
-## Getting Started
+**Live product intelligence for team quests.**
 
-First, run the development server:
+Surge is a real-time collaborative workspace where teams organize work into quests — structured missions with milestones, actions, and live presence.
+
+<!-- todo: add screenshot -->
+
+## Stack
+
+- **Framework**: Next.js (App Router, Edge + Serverless)
+- **Auth**: Clerk
+- **Database**: Supabase PostgreSQL (direct `pg` for writes, Supabase client for reads)
+- **Realtime**: Supabase Realtime (WebSocket)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **Deployment**: Vercel
+
+## Quick Start
 
 ```bash
+cp .env.example .env.local   # fill in your secrets
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Required Environment
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Variable | Source |
+|---|---|
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk Dashboard |
+| `CLERK_SECRET_KEY` | Clerk Dashboard |
+| `CLERK_WEBHOOK_SECRET` | Clerk Dashboard |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase Dashboard |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase Dashboard |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase Dashboard |
+| `SUPABASE_DB_HOST` | Supabase Dashboard (pooler) |
+| `SUPABASE_DB_PORT` | Supabase Dashboard (pooler, default 6543) |
+| `SUPABASE_DB_NAME` | Supabase Database |
+| `SUPABASE_DB_USER` | Supabase Database |
+| `SUPABASE_DB_PASSWORD` | Supabase Database |
 
-## Learn More
+See `docs/Architecture.md` for detailed deployment instructions.
 
-To learn more about Next.js, take a look at the following resources:
+## Project Structure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+src/
+  app/          Next.js App Router (routes, API, layouts)
+  components/   Reusable React components
+  features/     Domain modules (quests, realtime, etc.)
+  lib/          Shared utilities, database, security
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Key Features
 
-## Deploy on Vercel
+- **Quests** — structured projects with milestones and actions, tracking progress and momentum
+- **Team Management** — role-based access (owner, admin, member), search, invites
+- **Live Presence** — see who's online and active in real time
+- **Activity Timeline** — every state change logged with actor identity
+- **Mission Control** — health, momentum, and progress metrics
+- **Command Palette** — `Cmd+K` quick navigation and search
+- **Dark & Light themes** — persistent preference with system default
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Architecture Principles
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-# Surge
+- Every business mutation emits exactly one immutable domain event.
+- Transactions use direct `pg` (multi-statement support); reads use the Supabase JS client.
+- All mutations go through `executeDomainMutation()` which wraps the write in a transaction with event logging.
+- Security headers (CSP, HSTS) are applied via middleware.
+
+See `docs/Architecture.md` for the full design document.
+
+## Scripts
+
+| Command | Description |
+|---|---|
+| `npm run dev` | Start development server |
+| `npm run build` | Production build |
+| `npm start` | Start production server |
+| `npm run lint` | Run ESLint |
+| `npm test` | Run tests |
+
+## License
+
+<!-- todo -->

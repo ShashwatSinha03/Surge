@@ -24,7 +24,14 @@ export function InviteAcceptForm({ token, signedIn }: Props) {
       body: JSON.stringify({ token }),
     });
 
-    const data = await res.json();
+    let data: any;
+    try {
+      data = await res.json();
+    } catch {
+      setError('Unexpected server response. Please try again.');
+      setSubmitting(false);
+      return;
+    }
 
     if (!res.ok) {
       setError(data.error ?? 'Failed to accept invite.');

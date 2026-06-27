@@ -155,6 +155,18 @@ export function CommandPalette() {
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
         setSelectedIndex((prev) => (prev - 1 + Math.max(totalItems, 1)) % Math.max(totalItems, 1));
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        setSelectedIndex(0);
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        setSelectedIndex(Math.max(totalItems - 1, 0));
+      } else if (e.key === 'PageUp') {
+        e.preventDefault();
+        setSelectedIndex((prev) => Math.max(prev - 5, 0));
+      } else if (e.key === 'PageDown') {
+        e.preventDefault();
+        setSelectedIndex((prev) => Math.min(prev + 5, Math.max(totalItems - 1, 0)));
       } else if (e.key === 'Enter') {
         e.preventDefault();
         executeSelected();
@@ -226,6 +238,23 @@ export function CommandPalette() {
     executeSelected();
   }
 
+  function HighlightedText({ text, highlight }: { text: string; highlight: string }) {
+    if (!highlight || highlight.length < MIN_QUERY_LENGTH) {
+      return <>{text}</>;
+    }
+    const lower = text.toLowerCase();
+    const hl = highlight.toLowerCase();
+    const idx = lower.indexOf(hl);
+    if (idx === -1) return <>{text}</>;
+    return (
+      <>
+        {text.slice(0, idx)}
+        <mark className="bg-accent/20 text-accent rounded-sm">{text.slice(idx, idx + hl.length)}</mark>
+        {text.slice(idx + hl.length)}
+      </>
+    );
+  }
+
   function renderItem(
     item: SearchResult | Command,
     index: number,
@@ -251,8 +280,12 @@ export function CommandPalette() {
           >
             {cmd.icon && <cmd.icon className="w-4 h-4 text-muted shrink-0" aria-hidden="true" />}
             <div className="flex-1 min-w-0">
-              <div className="font-medium text-fg truncate">{cmd.title}</div>
-              <div className="text-xs text-muted truncate">{cmd.description}</div>
+              <div className="font-medium text-fg truncate">
+                <HighlightedText text={cmd.title} highlight={query} />
+              </div>
+              <div className="text-xs text-muted truncate">
+                <HighlightedText text={cmd.description} highlight={query} />
+              </div>
             </div>
             {cmd.shortcut && (
               <kbd className="text-[10px] text-muted bg-surface px-1.5 py-0.5 rounded border border-border font-secondary">
@@ -266,6 +299,7 @@ export function CommandPalette() {
 
     if ('type' in item) {
       const r = item as SearchResult;
+      const displayTitle = 'title' in r ? (r as any).title : (r as any).name;
       return {
         key: `${r.type}:${(r as any).id}`,
         element: (
@@ -280,7 +314,9 @@ export function CommandPalette() {
           >
             <TypeIcon type={r.type} />
             <div className="flex-1 min-w-0">
-              <div className="font-medium text-fg truncate">{'title' in r ? (r as any).title : (r as any).name}</div>
+              <div className="font-medium text-fg truncate">
+                <HighlightedText text={displayTitle} highlight={query} />
+              </div>
               <div className="text-xs text-muted truncate">
                 <TypeLabel type={r.type} result={r} />
               </div>
@@ -305,8 +341,12 @@ export function CommandPalette() {
         >
           {cmd.icon && <cmd.icon className="w-4 h-4 text-muted shrink-0" aria-hidden="true" />}
           <div className="flex-1 min-w-0">
-            <div className="font-medium text-fg truncate">{cmd.title}</div>
-            <div className="text-xs text-muted truncate">{cmd.description}</div>
+            <div className="font-medium text-fg truncate">
+              <HighlightedText text={cmd.title} highlight={query} />
+            </div>
+            <div className="text-xs text-muted truncate">
+              <HighlightedText text={cmd.description} highlight={query} />
+            </div>
           </div>
           {cmd.shortcut && (
             <kbd className="text-[10px] text-muted bg-surface px-1.5 py-0.5 rounded border border-border font-secondary">
@@ -360,6 +400,9 @@ export function CommandPalette() {
             />
             {isSearching && (
               <span className="text-xs text-muted animate-pulse" aria-live="polite">Searching...</span>
+            )}
+            {!isSearching && query && totalItems > 0 && (
+              <span className="text-xs text-muted/40">{totalItems} result{totalItems !== 1 ? 's' : ''}</span>
             )}
           </div>
 

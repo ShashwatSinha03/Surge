@@ -61,11 +61,16 @@ export function useMilestoneMutations(
       headers: { 'Content-Type': 'application/json' },
       body: body ? JSON.stringify(body) : undefined,
     });
+    let data: any;
+    try {
+      data = await res.json();
+    } catch {
+      throw new Error('Unexpected server response.');
+    }
     if (!res.ok) {
-      const data = await res.json();
       throw new Error(data.error ?? 'Request failed.');
     }
-    return res.json();
+    return data;
   }, []);
 
   const createMilestone = useCallback(async (title: string) => {

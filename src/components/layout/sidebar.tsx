@@ -6,14 +6,14 @@ export async function Sidebar({ recentQuests }: { recentQuests: { id: string; ti
   const user = await currentUser();
 
   return (
-    <aside className="hidden lg:flex w-64 h-full flex-col border-r border-surface bg-bg shrink-0 overflow-y-auto" aria-label="Sidebar">
+    <aside className="hidden lg:flex w-64 h-full flex-col border-r border-surface bg-bg shrink-0" aria-label="Sidebar">
       <div className="px-5 py-6">
         <Link href="/quests" className="text-xl font-semibold tracking-tight text-fg">
           Surge
         </Link>
       </div>
 
-      <nav className="flex-1 px-3 space-y-1" aria-label="Main navigation">
+      <nav className="flex-1 px-3 space-y-1 overflow-y-auto min-h-0" aria-label="Main navigation">
         <Link
           href="/quests"
           className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-fg bg-surface font-medium"
@@ -45,7 +45,7 @@ export async function Sidebar({ recentQuests }: { recentQuests: { id: string; ti
         )}
       </nav>
 
-      <div className="px-3 py-4 border-t border-surface mt-auto">
+      <div className="px-3 py-4 border-t border-surface shrink-0">
         <div className="flex items-center justify-between px-3 py-2 text-sm text-muted">
           <span className="truncate">
             {user?.firstName ?? user?.emailAddresses?.[0]?.emailAddress ?? 'User'}

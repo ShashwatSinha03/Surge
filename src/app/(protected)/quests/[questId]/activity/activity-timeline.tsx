@@ -184,16 +184,21 @@ export function ActivityTimeline({
   useEffect(() => {
     if (newEventCount === 0) return;
     const timer = setTimeout(async () => {
-      const params = new URLSearchParams({ limit: '5' });
-      if (filter !== 'all') params.set('type', filter);
-      const res = await fetch(`/api/quests/${questId}/activity?${params}`);
-      const data: ActivityCursorResult = await res.json();
-      setEntries((prev) => {
-        const existingIds = new Set(prev.map((e) => e.type === 'item' ? (e as ActivityItem).id : (e as ActivityGroup).id));
-        const newItems = data.items.filter((e) => !existingIds.has(e.type === 'item' ? (e as ActivityItem).id : (e as ActivityGroup).id));
-        if (newItems.length === 0) return prev;
-        return [...newItems, ...prev];
-      });
+      try {
+        const params = new URLSearchParams({ limit: '5' });
+        if (filter !== 'all') params.set('type', filter);
+        const res = await fetch(`/api/quests/${questId}/activity?${params}`);
+        if (!res.ok) return;
+        const data: ActivityCursorResult = await res.json();
+        setEntries((prev) => {
+          const existingIds = new Set(prev.map((e) => e.type === 'item' ? (e as ActivityItem).id : (e as ActivityGroup).id));
+          const newItems = data.items.filter((e) => !existingIds.has(e.type === 'item' ? (e as ActivityItem).id : (e as ActivityGroup).id));
+          if (newItems.length === 0) return prev;
+          return [...newItems, ...prev];
+        });
+      } catch {
+        // Activity refresh failed silently
+      }
     }, 1000);
     return () => clearTimeout(timer);
   }, [newEventCount, questId, filter]);
@@ -205,10 +210,13 @@ export function ActivityTimeline({
       const params = new URLSearchParams({ limit: '20', cursor });
       if (filter !== 'all') params.set('type', filter);
       const res = await fetch(`/api/quests/${questId}/activity?${params}`);
+      if (!res.ok) return;
       const data: ActivityCursorResult = await res.json();
       setEntries((prev) => [...prev, ...data.items]);
       setCursor(data.nextCursor);
       setHasMore(data.hasMore);
+    } catch {
+      // Load more failed silently
     } finally {
       setLoading(false);
     }
@@ -221,10 +229,13 @@ export function ActivityTimeline({
       const params = new URLSearchParams({ limit: '20' });
       if (newFilter !== 'all') params.set('type', newFilter);
       const res = await fetch(`/api/quests/${questId}/activity?${params}`);
+      if (!res.ok) return;
       const data: ActivityCursorResult = await res.json();
       setEntries(data.items);
       setCursor(data.nextCursor);
       setHasMore(data.hasMore);
+    } catch {
+      // Filter change failed silently
     } finally {
       setLoading(false);
     }

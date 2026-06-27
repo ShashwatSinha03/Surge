@@ -33,10 +33,20 @@ const CLERK_INSTANCES = [
   'https://*.clerk.com',
 ];
 
+const isDev = process.env.NODE_ENV === 'development';
+
 export function buildCsp(isAuthenticated: boolean): string {
+  const scriptSrc = [SELF, "'unsafe-inline'", ...CLERK_INSTANCES];
+  if (isDev) scriptSrc.push("'unsafe-eval'");
+
+  const supabaseWsUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    ? process.env.NEXT_PUBLIC_SUPABASE_URL.replace(/^https:/, 'wss:')
+    : undefined;
+
   const directives: Record<string, string[]> = {
     'default-src': [SELF],
-    'script-src': [SELF, "'unsafe-inline'", ...CLERK_INSTANCES],
+    'script-src': scriptSrc,
+    'worker-src': [SELF, 'blob:'],
     'style-src': [SELF, "'unsafe-inline'"],
     'img-src': [SELF, 'https://img.clerk.com', 'data:', 'blob:'],
     'font-src': [SELF, 'data:'],
@@ -46,6 +56,7 @@ export function buildCsp(isAuthenticated: boolean): string {
       ...(process.env.NEXT_PUBLIC_SUPABASE_URL
         ? [process.env.NEXT_PUBLIC_SUPABASE_URL]
         : []),
+      ...(supabaseWsUrl ? [supabaseWsUrl] : []),
     ],
     'frame-src': [SELF, ...CLERK_INSTANCES],
     'base-uri': [SELF],

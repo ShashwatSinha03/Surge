@@ -25,15 +25,18 @@ export class PresenceManager {
       .on('presence', { event: 'sync' }, () => {
         if (!this.channel) return;
         const state = this.channel.presenceState();
-        const allPresences: PresenceState[] = [];
+        const seen = new Map<string, PresenceState>();
         for (const presences of Object.values(state)) {
           for (const p of presences as unknown as PresenceState[]) {
             if (p && typeof p === 'object' && 'userId' in p) {
-              allPresences.push(p);
+              const existing = seen.get(p.userId);
+              if (!existing || (p.lastHeartbeat > existing.lastHeartbeat)) {
+                seen.set(p.userId, p);
+              }
             }
           }
         }
-        allPresences.sort((a, b) => a.name.localeCompare(b.name));
+        const allPresences = [...seen.values()].sort((a, b) => a.name.localeCompare(b.name));
         for (const listener of this.listeners) {
           listener(allPresences);
         }

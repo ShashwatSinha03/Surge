@@ -52,10 +52,19 @@ export default async function TeamPage({ params }: Props) {
     return order[a.role] - order[b.role];
   });
 
+  const { data: pendingInvites } = await supabase
+    .from('invites')
+    .select('id, email, expires_at')
+    .eq('quest_id', questId)
+    .is('accepted_at', null)
+    .is('revoked_at', null)
+    .gt('expires_at', new Date().toISOString());
+
   return (
     <TeamContent
       questId={questId}
       members={sorted}
+      pendingInvites={pendingInvites ?? []}
       currentUserRole={membership.role}
       canInvite={canManageInvites(membership.role)}
       canChangeRoles={canChangeRoles(membership.role)}

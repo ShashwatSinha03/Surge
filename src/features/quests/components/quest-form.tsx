@@ -43,7 +43,14 @@ export function QuestForm() {
       }),
     });
 
-    const data = await res.json();
+    let data: any;
+    try {
+      data = await res.json();
+    } catch {
+      setErrors({ title: 'Unexpected server response. Please try again.' });
+      setSubmitting(false);
+      return;
+    }
 
     if (!res.ok) {
       if (data.errors) {

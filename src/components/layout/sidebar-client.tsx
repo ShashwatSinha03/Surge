@@ -10,7 +10,12 @@ function getInitialTheme(): 'dark' | 'light' {
 }
 
 export function SidebarClient() {
-  const [theme, setTheme] = useState<'dark' | 'light'>(getInitialTheme);
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+
+  useEffect(() => {
+    const stored = localStorage.getItem('surge-theme') as 'dark' | 'light' | null;
+    if (stored) setTheme(stored);
+  }, []);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -41,6 +46,11 @@ export function SidebarClient() {
         appearance={{
           elements: {
             avatarBox: 'w-7 h-7',
+            userButtonPopoverCard: 'bg-bg border border-surface rounded-xl shadow-lg overflow-hidden',
+            userButtonPopoverActions: 'divide-y divide-surface',
+            userButtonPopoverActionButton: 'px-4 py-2.5 text-sm text-fg hover:bg-surface transition-colors',
+            userButtonPopoverActionButtonText: 'text-fg',
+            userButtonPopoverFooter: 'px-4 py-2.5 text-xs text-muted border-t border-surface',
           },
         }}
       />
