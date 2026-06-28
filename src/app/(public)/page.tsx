@@ -5,6 +5,7 @@ import { useAuth } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Ferrofluid } from '@/components/ui/ferrofluid';
+import { BlurText } from '@/components/ui/blur-text';
 
 const FEATURES = [
   { label: 'Milestones', description: 'Structured checkpoints keep work visible and teams aligned.' },
@@ -74,12 +75,25 @@ export default function LandingPage() {
 
       <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-6">
         <div className="max-w-2xl text-center space-y-8">
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-medium leading-tight tracking-tight text-fg">
-            Ship with momentum.
-          </h1>
+          <div className="space-y-2">
+            <BlurText
+              text="Just Busy"
+              delay={320}
+              animateBy="words"
+              direction="top"
+              className="text-4xl sm:text-5xl md:text-6xl font-medium leading-tight tracking-tight text-fg flex flex-nowrap justify-center"
+            />
+            <BlurText
+              text="Or Making Progress?"
+              delay={320}
+              animateBy="words"
+              direction="top"
+              className="text-4xl sm:text-5xl md:text-6xl font-medium leading-tight tracking-tight text-fg flex flex-nowrap justify-center"
+            />
+          </div>
 
-          <p className="text-lg sm:text-xl text-muted leading-relaxed max-w-md mx-auto">
-            A realtime workspace for execution. Track milestones, own actions, and maintain team momentum without the overhead.
+          <p className="text-base sm:text-lg text-muted leading-relaxed max-w-lg mx-auto">
+            Teams don't struggle with effort, they struggle with direction. Surge keeps everyone aligned on what matters next, who's responsible, and what's slowing the team down.
           </p>
 
           <div className="flex items-center justify-center gap-4 pt-2">
