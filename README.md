@@ -73,6 +73,24 @@ src/
 
 See `docs/Architecture.md` for the full design document.
 
+## Providers & Philosophy
+
+### Authentication: Clerk
+Clerk handles all authentication — sign-up, sign-in, sessions, MFA, passkeys, and user management.
+Surge never stores passwords or credentials.
+
+### Database: Supabase
+PostgreSQL hosted on Supabase. Writes use direct `pg` via the session pooler for transactional integrity.
+Reads use the Supabase JS client. Realtime uses Supabase Realtime WebSocket.
+
+### Data Ownership
+Users own all content they create in Surge: quests, milestones, actions, workspace information, and activity history.
+Surge stores and processes this data solely to provide the application functionality.
+Surge does not claim ownership, sell user data, train models on it, or use it for advertising.
+Users can request full data export or delete their account and data at any time.
+
+See `docs/Architecture.md` for the full design document.
+
 ## Scripts
 
 | Command | Description |

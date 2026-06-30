@@ -119,6 +119,12 @@ export default function LandingPage() {
       </main>
 
       <footer className="relative z-10 py-6 max-w-5xl mx-auto w-full">
+        <nav className="flex flex-wrap justify-center gap-6 text-sm text-muted/60 mb-4">
+          <Link href="/privacy" className="hover:text-fg transition-colors">Privacy</Link>
+          <Link href="/terms" className="hover:text-fg transition-colors">Terms</Link>
+          <Link href="/security" className="hover:text-fg transition-colors">Security</Link>
+          <Link href="/data-ownership" className="hover:text-fg transition-colors">Data Ownership</Link>
+        </nav>
         <p className="text-xs text-muted/40 text-center">
           Built with Next.js, Clerk, Supabase &middot; &copy; {new Date().getFullYear()}
         </p>
