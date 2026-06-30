@@ -45,14 +45,32 @@ function SectionHeader({ title, href }: { title: string; href?: string }) {
   );
 }
 
-function ProgressBar({ value }: { value: number }) {
-  const color = value >= 70 ? 'bg-green-500' : value >= 40 ? 'bg-amber-500' : 'bg-red-500';
+function ProgressRing({ value }: { value: number }) {
+  const r = 38;
+  const circ = 2 * Math.PI * r;
+  const offset = circ - (value / 100) * circ;
+  const color = value >= 70 ? '#22c55e' : value >= 40 ? '#f59e0b' : '#ef4444';
   return (
-    <div className="w-full h-1.5 bg-border rounded-full overflow-hidden">
-      <div
-        className={`h-full rounded-full transition-all duration-500 ${color}`}
-        style={{ width: `${value}%` }}
-      />
+    <div className="inline-flex items-center gap-4">
+      <div className="relative shrink-0">
+        <svg width="96" height="96" className="-rotate-90">
+          <circle cx="48" cy="48" r={r} fill="none" stroke="currentColor" className="text-border" strokeWidth="7" />
+          <circle
+            cx="48" cy="48" r={r}
+            fill="none"
+            stroke={color}
+            strokeWidth="7"
+            strokeLinecap="round"
+            strokeDasharray={circ}
+            strokeDashoffset={offset}
+            className="transition-all duration-700"
+          />
+        </svg>
+        <span className="absolute inset-0 flex items-center justify-center text-lg font-semibold tabular-nums text-fg">
+          {value}%
+        </span>
+      </div>
+      <span className="text-xs text-muted/60 font-secondary tracking-widest uppercase">Progress</span>
     </div>
   );
 }
@@ -167,14 +185,7 @@ export default async function QuestOverviewPage({ params }: Props) {
         )}
       </div>
 
-      {/* Progress Bar — thin, full-width signal */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-xs text-muted/60 font-secondary tracking-widest uppercase">
-          <span>Progress</span>
-          <span>{completionPct}%</span>
-        </div>
-        <ProgressBar value={completionPct} />
-      </div>
+      <ProgressRing value={completionPct} />
 
       {/* Health & Progress Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
