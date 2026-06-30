@@ -1,13 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createServerClient } from '@/lib/supabase/server';
-import { extractSignalsWithPrev } from '@/features/momentum/signals';
-import { analyzeBehavior } from '@/features/momentum/behavior';
-import { evaluatePillars } from '@/features/momentum/pillars';
-import { calculateMomentum } from '@/features/momentum/calculator';
-import { generateRecommendations } from '@/features/momentum/recommendations';
-import { generateMissionSummary, generateHighlights } from '@/features/momentum/summary';
-import type { MomentumResponse } from '@/features/momentum/types';
+import { calculateQuestMomentum } from '@/features/momentum/calculateMomentum';
 
 export async function GET(
   _req: NextRequest,
@@ -44,23 +38,7 @@ export async function GET(
   }
 
   try {
-    const { current: signals, prev: prevSignals } = await extractSignalsWithPrev(questId);
-    const behavior = await analyzeBehavior(signals);
-    const pillars = evaluatePillars(signals, behavior, prevSignals);
-    const momentum = calculateMomentum(pillars);
-    const recommendations = generateRecommendations(signals, behavior);
-    const mission = generateMissionSummary(momentum.overall, pillars);
-    const highlights = generateHighlights(signals);
-
-    const response: MomentumResponse = {
-      mission,
-      momentum,
-      highlights,
-      pillars,
-      recommendations,
-      lastCalculated: new Date().toISOString(),
-    };
-
+    const response = await calculateQuestMomentum(questId);
     return NextResponse.json(response);
   } catch (error) {
     console.error('Momentum calculation failed:', error);

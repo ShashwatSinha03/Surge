@@ -52,7 +52,7 @@ export default async function QuestLayout({ children, params }: Props) {
   }
 
   return (
-    <div className="p-6 max-w-4xl">
+    <div className="p-6 max-w-4xl min-h-full">
       <header className="mb-4">
         <div className="flex items-start justify-between">
           <div>

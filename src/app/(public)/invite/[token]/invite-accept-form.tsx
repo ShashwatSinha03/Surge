@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { SignInButton } from '@clerk/nextjs';
 
 type Props = {
@@ -11,6 +11,7 @@ type Props = {
 
 export function InviteAcceptForm({ token, signedIn }: Props) {
   const router = useRouter();
+  const pathname = usePathname();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -49,7 +50,7 @@ export function InviteAcceptForm({ token, signedIn }: Props) {
         <p className="text-sm text-muted">
           Sign in to accept this invite.
         </p>
-        <SignInButton mode="modal">
+        <SignInButton mode="modal" fallbackRedirectUrl={pathname}>
           <button className="w-full px-4 py-2.5 rounded-lg bg-accent text-accent-fg text-sm font-medium hover:opacity-90 transition-opacity">
             Sign In
           </button>

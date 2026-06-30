@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { getQuestActivityService } from '@/features/activity/activityService';
 import type { Quest, Milestone, Action, MemberRole } from '@/types';
 import type { MomentumResponse } from '@/features/momentum/types';
+import { calculateQuestMomentum } from '@/features/momentum/calculateMomentum';
 import type { ActivityEntry, ActivityFilter } from '@/features/activity/activityTypes';
 
 import { Badge } from '@/components/ui/badge';
@@ -143,11 +144,7 @@ export default async function QuestOverviewPage({ params }: Props) {
 
   let momentum: MomentumResponse | null = null;
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
-    const res = await fetch(`${baseUrl}/api/quests/${questId}/momentum`, { cache: 'no-store' });
-    if (res.ok) {
-      momentum = await res.json();
-    }
+    momentum = await calculateQuestMomentum(questId);
   } catch {
     // Momentum unavailable
   }

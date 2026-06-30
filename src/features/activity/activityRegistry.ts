@@ -129,6 +129,16 @@ export const activityRegistry: Record<string, RegistryEntry> = {
     }),
     groupKey: (event) => `MILESTONE_DELETED:${event.entity_id}`,
   },
+  INVITE_REVOKED: {
+    icon: 'MailX',
+    importance: 'HIGH',
+    category: 'members',
+    format: (event, actor) => ({
+      title: `${actor.name} revoked invite for ${s(event, 'email') || 'a member'}`,
+      subtitle: null,
+    }),
+    groupKey: (event) => `INVITE_REVOKED:${event.entity_id}`,
+  },
   MEMBER_INVITED: {
     icon: 'MailPlus',
     importance: 'NORMAL',

@@ -2,7 +2,7 @@ import { auth } from '@clerk/nextjs/server';
 import { createServerClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { DeleteQuestButton } from '@/components/quests/delete-quest-button';
 import type { Quest, MemberRole } from '@/types';
 
 type Props = {
@@ -162,9 +162,7 @@ export default async function QuestSettingsPage({ params }: Props) {
                 Permanently delete this quest and all its data. This action cannot be undone.
               </p>
             </div>
-            <Button variant="destructive" disabled>
-              Delete quest
-            </Button>
+            <DeleteQuestButton questId={questId} />
           </div>
         </div>
       </section>
