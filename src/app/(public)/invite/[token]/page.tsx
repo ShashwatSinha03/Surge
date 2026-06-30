@@ -18,7 +18,7 @@ export default async function InvitePage({ params }: Props) {
 
   const { data: invite } = await supabase
     .from('invites')
-    .select('id, quest_id, expires_at, accepted_at, revoked_at')
+    .select('id, quest_id, expires_at, accepted_at, revoked_at, declined_at')
     .eq('token_hash', tokenHash)
     .single();
 
@@ -42,6 +42,19 @@ export default async function InvitePage({ params }: Props) {
           <h1 className="text-xl font-medium text-fg mb-2">Already Used</h1>
           <p className="text-sm text-muted">
             This invite has already been accepted.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (invite.declined_at) {
+    return (
+      <div className="min-h-screen bg-bg flex items-center justify-center p-8">
+        <div className="max-w-md w-full text-center">
+          <h1 className="text-xl font-medium text-fg mb-2">Invite Declined</h1>
+          <p className="text-sm text-muted">
+            This invite has been declined.
           </p>
         </div>
       </div>

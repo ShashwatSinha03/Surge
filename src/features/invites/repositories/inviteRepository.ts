@@ -38,6 +38,14 @@ export const inviteRepository = {
     return rows[0] ?? null;
   },
 
+  async decline(query: QueryExecutor, id: string) {
+    const { rows } = await query(
+      'UPDATE invites SET declined_at = now() WHERE id = $1 RETURNING *',
+      [id]
+    );
+    return rows[0] ?? null;
+  },
+
   async accept(query: QueryExecutor, id: string) {
     const { rows } = await query(
       'UPDATE invites SET accepted_at = now() WHERE id = $1 RETURNING *',

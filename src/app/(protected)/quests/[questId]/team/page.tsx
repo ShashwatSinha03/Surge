@@ -58,6 +58,7 @@ export default async function TeamPage({ params }: Props) {
     .eq('quest_id', questId)
     .is('accepted_at', null)
     .is('revoked_at', null)
+    .is('declined_at', null)
     .gt('expires_at', new Date().toISOString());
 
   return (

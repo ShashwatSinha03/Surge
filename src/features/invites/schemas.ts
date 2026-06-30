@@ -14,5 +14,10 @@ export const acceptInviteSchema = z.object({
   token: z.string().min(1, 'Token is required'),
 });
 
+export const declineInviteSchema = z.object({
+  token: z.string().min(1, 'Token is required'),
+});
+
 export type CreateInviteInput = z.infer<typeof createInviteSchema>;
 export type AcceptInviteInput = z.infer<typeof acceptInviteSchema>;
+export type DeclineInviteInput = z.infer<typeof declineInviteSchema>;

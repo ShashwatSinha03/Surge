@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { InviteForm } from '@/features/invites/components/invite-form';
+import { useToast } from '@/components/ui/toast';
 import type { MemberWithUser } from '@/types';
 
 type PendingInvite = {
@@ -97,6 +98,7 @@ export function TeamContent({
   const [error, setError] = useState('');
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const { toast } = useToast();
   const [roleFilter, setRoleFilter] = useState('all');
 
   async function handleRoleChange(memberId: string, newRole: string) {
@@ -207,7 +209,10 @@ export function TeamContent({
                     onClick={(e) => (e.target as HTMLInputElement).select()}
                   />
                   <button
-                    onClick={() => navigator.clipboard.writeText(inviteLink)}
+                    onClick={() => {
+                      navigator.clipboard.writeText(inviteLink);
+                      toast({ type: 'success', message: 'Copied to clipboard' });
+                    }}
                     className="text-xs text-accent hover:underline shrink-0"
                   >
                     Copy
