@@ -6,6 +6,6 @@ export async function register() {
     console.log('[surge] Environment validated successfully');
   } catch (error) {
     console.error('[surge] Environment validation failed:', error instanceof Error ? error.message : error);
-    process.exit(1);
+    throw error;
   }
 }
