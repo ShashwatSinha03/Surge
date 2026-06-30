@@ -29,6 +29,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
           .from('quests')
           .select('id, title')
           .in('id', questIds)
+          .neq('status', 'deleted')
           .order('updated_at', { ascending: false })
           .limit(5);
 
