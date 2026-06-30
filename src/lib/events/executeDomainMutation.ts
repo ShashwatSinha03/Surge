@@ -70,6 +70,8 @@ export async function executeDomainMutation(
 
         const { entity, changes } = await input.mutation(query);
 
+        const effectiveEntityId = input.event.entityId || entity.id;
+
         const snapshot = extractSnapshot(entity);
 
         const { rows: actorRows } = await query(
@@ -97,7 +99,7 @@ export async function executeDomainMutation(
             input.event.questId,
             input.event.actorId,
             input.event.entityType,
-            input.event.entityId,
+            effectiveEntityId,
             input.event.eventType,
             metadata,
             input.eventKey ?? null,
