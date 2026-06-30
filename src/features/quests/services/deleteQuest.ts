@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { executeDomainMutation } from '@/lib/events/executeDomainMutation';
+import { withTransaction } from '@/lib/db/transaction';
 import { validate, uuid } from '@/lib/validation/service-input';
 
 const schema = z.object({
@@ -10,25 +10,16 @@ const schema = z.object({
 export async function deleteQuestService(input: z.infer<typeof schema>) {
   const data = validate(schema, input, 'deleteQuestService');
 
-  return executeDomainMutation({
-    mutation: async (query) => {
-      const { rows } = await query(
-        'UPDATE quests SET status = $1, updated_at = now() WHERE id = $2 RETURNING *',
-        ['deleted', data.questId]
-      );
+  return withTransaction(async (query) => {
+    const { rows } = await query(
+      'DELETE FROM quests WHERE id = $1 RETURNING *',
+      [data.questId]
+    );
 
-      if (rows.length === 0) {
-        throw new Error('Quest not found');
-      }
+    if (rows.length === 0) {
+      return { success: false as const, error: 'Quest not found' };
+    }
 
-      return { entity: rows[0], changes: { status: 'deleted' } };
-    },
-    event: {
-      questId: data.questId,
-      actorId: data.actorId,
-      entityType: 'QUEST',
-      entityId: data.questId,
-      eventType: 'QUEST_UPDATED',
-    },
+    return { success: true as const, entity: rows[0] };
   });
 }
