@@ -39,13 +39,13 @@ function OwnerAvatar({ name, avatar_url }: { name: string | null; avatar_url: st
 function StatusIcon({ status }: { status: string }) {
   switch (status) {
     case 'completed':
-      return <span className="text-green-400 shrink-0" aria-hidden="true">\u2713</span>;
+      return <span className="text-green-400 shrink-0" aria-hidden="true">{'\u2713'}</span>;
     case 'claimed':
-      return <span className="text-blue-400 shrink-0" aria-hidden="true">\u25C9</span>;
+      return <span className="text-blue-400 shrink-0" aria-hidden="true">{'\u25C9'}</span>;
     case 'blocked':
-      return <span className="text-red-400 shrink-0" aria-hidden="true">\u2298</span>;
+      return <span className="text-red-400 shrink-0" aria-hidden="true">{'\u2298'}</span>;
     default:
-      return <span className="text-muted/30 shrink-0" aria-hidden="true">\u25A1</span>;
+      return <span className="text-muted/30 shrink-0" aria-hidden="true">{'\u25A1'}</span>;
   }
 }
 
@@ -466,7 +466,7 @@ export function JourneyBoard({
                             className="text-xs text-muted/30 hover:text-red-400 px-1.5 py-0.5"
                             aria-label={`Delete "${action.title}"`}
                           >
-                            \u00D7
+                            {'\u00D7'}
                           </button>
                         )}
                       </div>
