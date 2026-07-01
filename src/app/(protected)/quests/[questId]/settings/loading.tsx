@@ -1,6 +1,6 @@
 import { SurgeLoader } from '@/components/ui/surge-loader';
 
-export default function QuestDetailLoading() {
+export default function QuestSettingsLoading() {
   return (
     <div className="flex items-center justify-center min-h-[50vh] p-4 sm:p-8">
       <SurgeLoader />

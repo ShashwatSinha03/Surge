@@ -176,25 +176,25 @@ export default async function QuestOverviewPage({ params }: Props) {
     : 'text-muted';
 
   return (
-    <div className="space-y-10 p-6 max-w-5xl">
+    <div className="space-y-8 sm:space-y-10 p-4 sm:p-6 max-w-5xl">
       {/* Quest Title & Description */}
       <div>
-        <h1 className="text-2xl font-medium text-fg">{quest.title}</h1>
+        <h1 className="text-xl sm:text-2xl font-medium text-fg">{quest.title}</h1>
         {quest.description && (
-          <p className="text-sm text-muted mt-1.5 leading-relaxed max-w-2xl whitespace-pre-wrap">{quest.description}</p>
+          <p className="text-sm text-muted mt-1.5 leading-relaxed whitespace-pre-wrap">{quest.description}</p>
         )}
       </div>
 
       <ProgressRing value={completionPct} />
 
       {/* Health & Progress Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
         {/* Progress Card */}
         <section>
           <SectionHeader title="Milestones" />
-          <div className="rounded-xl border border-surface bg-surface p-5">
+          <div className="rounded-xl border border-surface bg-surface p-4 sm:p-5">
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-semibold text-fg">{completedMilestones}/{totalMilestones}</span>
+              <span className="text-2xl sm:text-3xl font-semibold text-fg">{completedMilestones}/{totalMilestones}</span>
               <span className="text-sm text-muted">complete</span>
             </div>
             {nextMilestone && (
@@ -221,9 +221,9 @@ export default async function QuestOverviewPage({ params }: Props) {
           <SectionHeader title="Health" href={momentum ? `/quests/${questId}/mission-control` : undefined} />
           <div className="rounded-xl border border-surface bg-surface p-5">
             {momentum ? (
-              <div className="flex items-center gap-5">
+              <div className="flex items-center gap-4 sm:gap-5">
                 <div className="flex flex-col items-center shrink-0">
-                  <span className={`text-3xl font-semibold ${healthColor}`}>{momentum.momentum.overall}</span>
+                  <span className={`text-2xl sm:text-3xl font-semibold ${healthColor}`}>{momentum.momentum.overall}</span>
                   <TrendArrow direction={momentum.momentum.trend.direction} />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -235,7 +235,7 @@ export default async function QuestOverviewPage({ params }: Props) {
               </div>
             ) : (
               <div className="flex items-center gap-3">
-                <span className="text-3xl font-semibold text-muted/30">--</span>
+                <span className="text-2xl sm:text-3xl font-semibold text-muted/30">--</span>
                 <p className="text-sm text-muted">Health data will appear once the quest has enough activity.</p>
               </div>
             )}
@@ -244,7 +244,7 @@ export default async function QuestOverviewPage({ params }: Props) {
       </div>
 
       {/* Recent Activity + Live Team in a 2-col grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
         {/* Recent Activity */}
         <section>
           <SectionHeader title="Recent Activity" href={`/quests/${questId}/activity`} />
@@ -253,7 +253,7 @@ export default async function QuestOverviewPage({ params }: Props) {
               {activityItems.slice(0, 5).map((entry) => (
                 <div
                   key={entry.id}
-                  className="flex items-center gap-3 py-2 border-l-2 border-border/40 pl-3 ml-0.5"
+                  className="flex items-center gap-3 py-2.5 border-l-2 border-border/40 pl-3 ml-0.5"
                 >
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-fg truncate">{entry.title}</p>
@@ -264,7 +264,7 @@ export default async function QuestOverviewPage({ params }: Props) {
               <div className="mt-3">
                 <Link
                   href={`/quests/${questId}/activity`}
-                  className="text-xs text-muted hover:text-fg transition-colors ml-3"
+                  className="text-xs text-muted hover:text-fg transition-colors ml-3 min-touch inline-flex items-center"
                 >
                   View all activity &rarr;
                 </Link>
@@ -282,8 +282,8 @@ export default async function QuestOverviewPage({ params }: Props) {
             {allMembers.length > 0 ? (
               <div className="divide-y divide-border/50">
                 {allMembers.map((member) => (
-                  <div key={member.id} className="flex items-center gap-3 py-2">
-                    <div className="w-7 h-7 rounded-full bg-surface-alt flex items-center justify-center text-xs text-muted font-medium flex-shrink-0">
+                  <div key={member.id} className="flex items-center gap-3 py-2.5">
+                    <div className="w-8 h-8 rounded-full bg-surface-alt flex items-center justify-center text-xs text-muted font-medium flex-shrink-0">
                       {member.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">

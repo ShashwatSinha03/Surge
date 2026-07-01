@@ -179,7 +179,7 @@ export function TeamContent({
   const hasNoResults = filteredMembers.length === 0 && (searchQuery || roleFilter !== 'all');
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       {error && (
         <div className="text-sm text-red-400 bg-red-400/5 border border-red-400/20 rounded-lg px-4 py-2">
           {error}

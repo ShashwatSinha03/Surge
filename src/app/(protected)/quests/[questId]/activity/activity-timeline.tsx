@@ -243,7 +243,7 @@ export function ActivityTimeline({
 
   if (entries.length === 0 && !loading) {
     return (
-      <div className="rounded-xl bg-surface border border-border p-12 text-center" aria-live="polite">
+      <div className="rounded-xl bg-surface border border-border p-6 sm:p-12 text-center" aria-live="polite">
         <p className="text-muted text-sm font-secondary tracking-wider uppercase">
           No activity yet
         </p>
@@ -256,7 +256,7 @@ export function ActivityTimeline({
 
   return (
     <div>
-      <div className="flex gap-2 mb-6">
+      <div className="flex gap-2 mb-4 sm:mb-6">
         {(['all', 'actions', 'milestones', 'members'] as const).map((f) => (
           <button
             key={f}
@@ -279,7 +279,7 @@ export function ActivityTimeline({
       </div>
 
       {hasMore && (
-        <div ref={sentinelRef} className="mt-6 text-center">
+        <div ref={sentinelRef} className="mt-4 sm:mt-6 text-center">
           <button
             onClick={loadMore}
             disabled={loading}

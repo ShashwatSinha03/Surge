@@ -27,7 +27,7 @@ export function QuestTabs({ questId }: { questId: string }) {
             : '';
 
   return (
-    <nav className="flex gap-6 border-b border-border">
+    <nav className="flex gap-2 sm:gap-6 border-b border-border overflow-x-auto scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0">
       {TABS.map((tab) => {
         const href = tab.id === '' ? `/quests/${questId}` : `/quests/${questId}/${tab.id}`;
         const isActive = currentTab === tab.id;
@@ -36,7 +36,7 @@ export function QuestTabs({ questId }: { questId: string }) {
           <Link
             key={tab.id}
             href={href}
-            className={`pb-3 text-sm transition-colors border-b-2 ${
+            className={`shrink-0 pb-3 text-sm font-medium transition-colors border-b-2 min-h-[44px] flex items-center ${
               isActive
                 ? 'text-fg border-fg'
                 : 'text-muted border-transparent hover:text-fg'

@@ -71,15 +71,15 @@ export default async function QuestSettingsPage({ params }: Props) {
   const memberCount = totalMembers.count ?? 0;
 
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-8">
+    <div className="p-4 sm:p-6 max-w-3xl mx-auto space-y-6 sm:space-y-8">
       <header>
-        <h1 className="text-2xl font-medium text-fg">Quest Settings</h1>
+        <h1 className="text-xl sm:text-2xl font-medium text-fg">Quest Settings</h1>
         <p className="text-muted text-sm mt-1">{quest.title}</p>
       </header>
 
       <section>
         <SectionHeader title="Quest Status" />
-        <div className="rounded-xl border border-surface bg-surface p-5 space-y-4">
+        <div className="rounded-xl border border-surface bg-surface p-4 sm:p-5 space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-fg">Current Status</p>
@@ -118,7 +118,7 @@ export default async function QuestSettingsPage({ params }: Props) {
 
       <section>
         <SectionHeader title="Notification Preferences" />
-        <div className="rounded-xl border border-surface bg-surface p-5 divide-y divide-border/50">
+        <div className="rounded-xl border border-surface bg-surface p-4 sm:p-5 divide-y divide-border/50">
           <p className="text-sm text-muted/60 pb-4">
             Notification preferences will be available in a future update.
           </p>
@@ -154,7 +154,7 @@ export default async function QuestSettingsPage({ params }: Props) {
 
       <section>
         <SectionHeader title="Danger Zone" />
-        <div className="rounded-xl border border-status-critical/20 bg-status-critical/5 p-5 space-y-4">
+        <div className="rounded-xl border border-status-critical/20 bg-status-critical/5 p-4 sm:p-5 space-y-4">
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div className="min-w-0">
               <p className="text-sm font-medium text-status-critical">Delete this quest</p>

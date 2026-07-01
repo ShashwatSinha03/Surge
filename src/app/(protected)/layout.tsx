@@ -2,9 +2,9 @@ import { auth } from '@clerk/nextjs/server';
 import { createServerClient } from '@/lib/supabase/server';
 import { Sidebar } from '@/components/layout/sidebar';
 import { MobileHeader } from '@/components/layout/mobile-header';
+import { MobileNav } from '@/components/layout/mobile-nav';
 import { CommandPalette } from '@/components/commands/command-palette';
 import { ShortcutsOverlay } from '@/components/ui/shortcuts-overlay';
-
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const { userId } = await auth();
   let recentQuests: { id: string; title: string }[] = [];
@@ -43,10 +43,11 @@ export default async function ProtectedLayout({ children }: { children: React.Re
       <Sidebar recentQuests={recentQuests} />
       <div className="flex flex-col flex-1 min-w-0">
         <MobileHeader recentQuests={recentQuests} />
-        <main className="flex-1 overflow-y-auto" id="main-content">
+        <main className="flex-1 overflow-y-auto pb-16 lg:pb-0" id="main-content">
           {children}
         </main>
       </div>
+      <MobileNav />
       <CommandPalette />
       <ShortcutsOverlay />
     </div>

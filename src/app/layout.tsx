@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import localFont from 'next/font/local';
 import { ClerkProvider } from '@clerk/nextjs';
 import { ToastProvider } from '@/components/ui/toast';
+import { StartupOverlay } from '@/components/shared/startup-overlay';
 import './globals.css';
 
 const ranade = localFont({
@@ -55,6 +56,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           signInFallbackRedirectUrl="/quests"
           signUpFallbackRedirectUrl="/quests"
         >
+          <StartupOverlay />
           <ToastProvider>
             {children}
           </ToastProvider>
